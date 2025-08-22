@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Product, ScannedProduct, BarcodeScannerProps } from '../types';
-import { getProductBySku, updateProductQuantity } from '../services/api';
+import { getProductBySku, incrementProductQuantity } from '../services/api';
 
 export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
@@ -40,8 +40,14 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
           
           setScannedProducts(updatedProducts);
           
-          // Actualizar en la base de datos
-          await updateProductQuantity(product.id, updatedProducts[existingProductIndex].quantity);
+          // Incrementar en la base de datos (+1)
+          await incrementProductQuantity(product.id);
+          
+          // Actualizar el producto actual con las nuevas existencias
+          const updatedProduct = await getProductBySku(sku);
+          if (updatedProduct) {
+            setCurrentProduct(updatedProduct);
+          }
         } else {
           // Nuevo producto: agregar a la lista
           const newScannedProduct: ScannedProduct = {
@@ -53,12 +59,15 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
           
           setScannedProducts(prev => [...prev, newScannedProduct]);
           
-          // Actualizar en la base de datos
-          await updateProductQuantity(product.id, 1);
+          // Incrementar en la base de datos (+1)
+          await incrementProductQuantity(product.id);
+          
+          // Actualizar el producto actual con las nuevas existencias
+          const updatedProduct = await getProductBySku(sku);
+          if (updatedProduct) {
+            setCurrentProduct(updatedProduct);
+          }
         }
-        
-        // Cambiar al producto actual
-        setCurrentProduct(product);
       } else {
         // Producto no encontrado
         alert('Producto no encontrado en la base de datos');
@@ -88,77 +97,32 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     }
   };
 
-  const handleQuantityChange = async (change: number) => {
+  const handleQuantityChange = async (increment: number) => {
     if (!currentProduct) return;
-    
-    const currentQuantity = scannedProducts.find(sp => sp.productId === currentProduct.id)?.quantity || 0;
-    const newQuantity = Math.max(0, currentQuantity + change);
-    
-    if (newQuantity === currentQuantity) return;
-    
-    // Actualizar el estado local
-    const updatedProducts = [...scannedProducts];
-    const existingProductIndex = updatedProducts.findIndex(sp => sp.productId === currentProduct.id);
-    
-    if (existingProductIndex >= 0) {
-      updatedProducts[existingProductIndex].quantity = newQuantity;
-      updatedProducts[existingProductIndex].lastScanned = new Date();
-    } else {
-      // Si no existe, agregarlo
-      updatedProducts.push({
-        productId: currentProduct.id,
-        productName: currentProduct.name,
-        quantity: newQuantity,
-        lastScanned: new Date()
-      });
-    }
-    
-    setScannedProducts(updatedProducts);
-    
-    // Hacer POST a la base de datos con la nueva cantidad
-    try {
-      await updateProductQuantity(currentProduct.id, newQuantity);
-      console.log(`Cantidad actualizada: ${currentProduct.id} -> ${newQuantity}`);
-    } catch (error) {
-      console.error('Error al actualizar cantidad en BD:', error);
-      alert('Error al actualizar la cantidad en la base de datos');
-    }
-  };
 
-  const handleQuantityInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!currentProduct) return;
-    
-    const newQuantity = Math.max(0, parseInt(e.target.value) || 0);
-    const currentQuantity = scannedProducts.find(sp => sp.productId === currentProduct.id)?.quantity || 0;
-    
-    if (newQuantity === currentQuantity) return;
-    
-    // Actualizar el estado local
-    const updatedProducts = [...scannedProducts];
-    const existingProductIndex = updatedProducts.findIndex(sp => sp.productId === currentProduct.id);
-    
-    if (existingProductIndex >= 0) {
-      updatedProducts[existingProductIndex].quantity = newQuantity;
-      updatedProducts[existingProductIndex].lastScanned = new Date();
-    } else {
-      // Si no existe, agregarlo
-      updatedProducts.push({
-        productId: currentProduct.id,
-        productName: currentProduct.name,
-        quantity: newQuantity,
-        lastScanned: new Date()
-      });
-    }
-    
+    const productId = currentProduct.id;
+    const currentQuantity = scannedProducts.find(sp => sp.productId === productId)?.quantity || 0;
+    const newQuantity = currentQuantity + increment;
+
+    if (newQuantity < 0) return; // No permitir cantidades negativas
+
+    const updatedProducts = scannedProducts.map(sp =>
+      sp.productId === productId ? { ...sp, quantity: newQuantity } : sp
+    );
     setScannedProducts(updatedProducts);
-    
-    // Hacer POST a la base de datos con la nueva cantidad
-    try {
-      await updateProductQuantity(currentProduct.id, newQuantity);
-      console.log(`Cantidad actualizada manualmente: ${currentProduct.id} -> ${newQuantity}`);
-    } catch (error) {
-      console.error('Error al actualizar cantidad en BD:', error);
-      alert('Error al actualizar la cantidad en la base de datos');
+
+    // Para cada incremento/decremento, llamar a la API
+    if (increment > 0) {
+      // Si es incremento, llamar a la API por cada +1
+      for (let i = 0; i < increment; i++) {
+        await incrementProductQuantity(productId);
+      }
+    }
+
+    // Actualizar el producto actual con las nuevas existencias
+    const updatedProduct = await getProductBySku(currentProduct.sku);
+    if (updatedProduct) {
+      setCurrentProduct(updatedProduct);
     }
   };
 
@@ -316,13 +280,13 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                     <p className="text-lg font-bold text-[#038C33]">${currentProduct.precio}</p>
                   </div>
                   <div className="text-center p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-[#0D0D0D]/20">
-                    <p className="text-sm text-[#0D0D0D]/70 font-semibold mb-2">Existencias</p>
+                    <p className="text-sm text-[#0D0D0D]/70 font-semibold mb-2">Existencias en BD</p>
                     <p className="text-lg font-bold text-[#BF0404]">{currentProduct.existencias}</p>
                   </div>
                 </div>
                 
                 <div className="mt-6">
-                  <p className="text-sm text-gray-600 mb-3">Cantidad Escaneada</p>
+                  <p className="text-sm text-gray-600 mb-3">Cantidad Escaneada en esta Sesión</p>
                   
                   {/* Controles de cantidad manual */}
                   <div className="flex items-center justify-center space-x-6">
@@ -337,14 +301,9 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                     </button>
                     
                     <div className="text-center">
-                      <input
-                        type="number"
-                        value={scannedProducts.find(sp => sp.productId === currentProduct.id)?.quantity || 0}
-                        onChange={handleQuantityInputChange}
-                        className="w-24 h-16 text-center text-3xl font-bold text-[#038C33] border-2 border-[#038C33]/30 rounded-2xl focus:ring-4 focus:ring-[#038C33]/30 focus:border-[#038C33] transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                        min="0"
-                        disabled={!currentProduct}
-                      />
+                      <div className="w-24 h-16 text-center text-3xl font-bold text-[#038C33] border-2 border-[#038C33]/30 rounded-2xl bg-white/80 backdrop-blur-sm flex items-center justify-center">
+                        {scannedProducts.find(sp => sp.productId === currentProduct.id)?.quantity || 0}
+                      </div>
                     </div>
                     
                     <button
@@ -405,7 +364,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
           </li>
           <li className="flex items-start">
             <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
-            Cada escaneo del mismo producto suma 1 a la cantidad
+            Cada escaneo del mismo producto suma +1 a la cantidad
           </li>
           <li className="flex items-start">
             <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
@@ -417,7 +376,11 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
           </li>
           <li className="flex items-start">
             <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
-            Escribe directamente en el campo de cantidad para valores específicos
+            Las existencias se incrementan automáticamente en +1 en la base de datos
+          </li>
+          <li className="flex items-start">
+            <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
+            Sistema compatible con múltiples sesiones simultáneas
           </li>
         </ul>
       </div>
