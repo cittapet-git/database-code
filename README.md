@@ -1,36 +1,165 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sistema de Carga con Lector de Código de Barras
 
-## Getting Started
+Aplicación web desarrollada en Next.js con TypeScript y Tailwind CSS para gestionar la carga de productos mediante un lector de código de barras.
 
-First, run the development server:
+## Características
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Autenticación de Usuario**: Pantalla de login para identificar al operador
+- **Escaneo de Productos**: Interfaz optimizada para lectores de código de barras
+- **Producto Actual Grande**: Muestra imagen, nombre, ID y cantidad del producto escaneado
+- **Historial Simple**: Lista de productos escaneados con cantidades
+- **Suma Automática**: Cada escaneo del mismo producto suma 1 a la cantidad
+- **Cambio Automático**: Al escanear un producto diferente, se cambia automáticamente
+- **Controles Manuales**: Botones + y - para ajustar cantidades manualmente
+- **Campo de Cantidad**: Input numérico para escribir cantidades específicas
+- **Diseño Responsivo**: Interfaz adaptada para diferentes tamaños de pantalla
+
+## Tecnologías Utilizadas
+
+- **Next.js 15.5.0** - Framework de React
+- **React 19.1.0** - Biblioteca de interfaz de usuario
+- **TypeScript** - Tipado estático para JavaScript
+- **Tailwind CSS 4** - Framework de CSS utilitario
+
+## Estructura del Proyecto
+
+```
+src/
+├── app/
+│   ├── components/
+│   │   └── BarcodeScanner.tsx    # Componente principal del escáner
+│   ├── services/
+│   │   └── api.ts                # Servicios de API (endpoints falsos)
+│   ├── types/
+│   │   └── index.ts              # Definiciones de tipos TypeScript
+│   ├── layout.tsx                # Layout principal de la aplicación
+│   └── page.tsx                  # Página principal con autenticación
+├── globals.css                   # Estilos globales
+└── tsconfig.json                 # Configuración de TypeScript
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Instalación y Uso
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Instalar dependencias**:
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Ejecutar en modo desarrollo**:
+   ```bash
+   npm run dev
+   ```
 
-## Learn More
+3. **Abrir en el navegador**:
+   ```
+   http://localhost:3000
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+## Flujo de Uso
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Login**: El operador ingresa su nombre en la pantalla inicial
+2. **Escaneo**: Se coloca el cursor en el campo de código de barras
+3. **Procesamiento**: Se escanea el producto y se obtienen los datos de la BD
+4. **Visualización**: Se muestra el producto actual grande con imagen y detalles
+5. **Suma Automática**: Cada escaneo del mismo producto suma 1
+6. **Cambio de Producto**: Al escanear uno diferente, se cambia automáticamente
+7. **Ajuste Manual**: Usar botones + y - o campo de texto para corregir cantidades
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estructura de Base de Datos
 
-## Deploy on Vercel
+### Tabla: product_images
+- **SKU**: Código de barras del producto
+- **Imagen_URL**: URL de la imagen del producto
+- **Peso**: Peso del producto
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Tabla: Saprod
+- **CodProd**: Código del producto (corresponde al SKU)
+- **Marca**: Marca del producto
+- **Descrip**: Descripción completa del producto
+- **PrecioUsd**: Precio en USD
+- **PrecioUsd2**: Precio alternativo en USD
+- **Existen**: Cantidad en existencias
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Endpoints de API
+
+### GET - Obtener Producto por SKU
+```typescript
+// Endpoint: /api/products/{sku}
+// Obtiene: imagen, nombre, id, marca, precio, existencias
+getProductBySku(sku: string): Promise<Product | null>
+```
+
+### POST - Actualizar Cantidad
+```typescript
+// Endpoint: /api/inventory/update-quantity
+// Actualiza: cantidad del producto en la BD
+updateProductQuantity(productId: string, quantity: number): Promise<boolean>
+```
+
+## Personalización
+
+### Endpoints Reales
+
+Para integrar con tu base de datos real:
+
+1. **Reemplazar `getProductBySku`** en `src/app/services/api.ts`:
+   ```typescript
+   export const getProductBySku = async (sku: string): Promise<Product | null> => {
+     try {
+       // Obtener imagen de product_images
+       const imageResponse = await fetch(`/api/product-images/${sku}`);
+       if (!imageResponse.ok) return null;
+       const productImage = await imageResponse.json();
+       
+       // Obtener datos de Saprod
+       const productResponse = await fetch(`/api/saprod/${sku}`);
+       if (!productResponse.ok) return null;
+       const saprod = await productResponse.json();
+       
+       // Combinar datos
+       return {
+         id: saprod.CodProd,
+         name: saprod.Descrip,
+         image: productImage.Imagen_URL,
+         sku: sku,
+         marca: saprod.Marca,
+         precio: saprod.PrecioUsd,
+         existencias: saprod.Existen
+       };
+     } catch (error) {
+       console.error('Error:', error);
+       return null;
+     }
+   };
+   ```
+
+2. **Reemplazar `updateProductQuantity`** en `src/app/services/api.ts`:
+   ```typescript
+   export const updateProductQuantity = async (productId: string, quantity: number): Promise<boolean> => {
+     const response = await fetch(`/api/inventory/update-quantity`, {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ productId, quantity })
+     });
+     return response.ok;
+   };
+   ```
+
+### Imágenes de Productos
+
+Reemplazar las rutas de placeholder (`/next.svg`, `/vercel.svg`, etc.) con las URLs reales de las imágenes de los productos.
+
+## Funcionalidades
+
+- **Escaneo Continuo**: El sistema se prepara automáticamente para el siguiente escaneo
+- **Manejo de Errores**: Alerta si el producto no se encuentra en la BD
+- **Estado de Carga**: Indicador visual durante el procesamiento
+- **Controles de Cantidad**: Botones + y - para ajustar cantidades manualmente
+- **Campo de Cantidad**: Input numérico para escribir cantidades específicas
+- **Actualización en BD**: Cada cambio de cantidad se postea automáticamente
+- **Reinicio de Sesión**: Botón para limpiar el historial y comenzar de nuevo
+- **Persistencia Temporal**: Los datos se mantienen durante la sesión (no se pierden al recargar)
+
+## Licencia
+
+Este proyecto es de uso interno para gestión de inventario.
