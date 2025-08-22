@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Product, ScannedProduct, BarcodeScannerProps } from '../types';
-import { getProductBySku, incrementProductQuantity } from '../services/api';
+import { getProductByBarcode, getProductImage, updateProductQuantity, incrementProductQuantity, decrementProductQuantity } from '../services/api';
 
 export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
@@ -17,16 +17,20 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     }
   }, []);
 
-  const handleScan = async (sku: string) => {
-    if (!sku.trim()) return;
+  const handleScan = async (barcode: string) => {
+    if (!barcode.trim()) return;
     
     setIsLoading(true);
     
     try {
-      // Obtener datos del producto desde la base de datos
-      const product = await getProductBySku(sku);
+      // Obtener datos del producto desde el API real
+      const product = await getProductByBarcode(barcode);
       
       if (product) {
+        // Obtener la imagen del producto
+        const imageUrl = await getProductImage(product.sku);
+        const productWithImage = { ...product, image: imageUrl };
+        
         // Verificar si ya existe en la lista de productos escaneados
         const existingProductIndex = scannedProducts.findIndex(
           sp => sp.productId === product.id
@@ -40,13 +44,14 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
           
           setScannedProducts(updatedProducts);
           
-          // Incrementar en la base de datos (+1)
-          await incrementProductQuantity(product.id);
+          // Actualizar cantidad en el API (+1)
+          await updateProductQuantity(product.sku, 1, userName);
           
           // Actualizar el producto actual con las nuevas existencias
-          const updatedProduct = await getProductBySku(sku);
+          const updatedProduct = await getProductByBarcode(barcode);
           if (updatedProduct) {
-            setCurrentProduct(updatedProduct);
+            const updatedImageUrl = await getProductImage(updatedProduct.sku);
+            setCurrentProduct({ ...updatedProduct, image: updatedImageUrl });
           }
         } else {
           // Nuevo producto: agregar a la lista
@@ -59,21 +64,24 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
           
           setScannedProducts(prev => [...prev, newScannedProduct]);
           
-          // Incrementar en la base de datos (+1)
-          await incrementProductQuantity(product.id);
+          // Actualizar cantidad en el API (+1)
+          await updateProductQuantity(product.sku, 1, userName);
           
           // Actualizar el producto actual con las nuevas existencias
-          const updatedProduct = await getProductBySku(sku);
+          const updatedProduct = await getProductByBarcode(barcode);
           if (updatedProduct) {
-            setCurrentProduct(updatedProduct);
+            const updatedImageUrl = await getProductImage(updatedProduct.sku);
+            setCurrentProduct({ ...updatedProduct, image: updatedImageUrl });
           }
         }
+        
+        // Establecer el producto actual con imagen
+        setCurrentProduct(productWithImage);
       } else {
         // Producto no encontrado
         alert('Producto no encontrado en la base de datos');
       }
     } catch (error) {
-      console.error('Error al procesar el escaneo:', error);
       alert('Error al procesar el producto');
     } finally {
       setIsLoading(false);
@@ -111,18 +119,18 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     );
     setScannedProducts(updatedProducts);
 
-    // Para cada incremento/decremento, llamar a la API
+    // Llamar a la API correspondiente según el incremento
     if (increment > 0) {
-      // Si es incremento, llamar a la API por cada +1
-      for (let i = 0; i < increment; i++) {
-        await incrementProductQuantity(productId);
-      }
+      await incrementProductQuantity(currentProduct.sku, userName);
+    } else if (increment < 0) {
+      await decrementProductQuantity(currentProduct.sku, userName);
     }
 
     // Actualizar el producto actual con las nuevas existencias
-    const updatedProduct = await getProductBySku(currentProduct.sku);
+    const updatedProduct = await getProductByBarcode(currentProduct.sku);
     if (updatedProduct) {
-      setCurrentProduct(updatedProduct);
+      const updatedImageUrl = await getProductImage(updatedProduct.sku);
+      setCurrentProduct({ ...updatedProduct, image: updatedImageUrl });
     }
   };
 
