@@ -27,6 +27,8 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   );
   const [isLoadingRecords, setIsLoadingRecords] = useState<boolean>(false);
   const [logsRefreshTrigger, setLogsRefreshTrigger] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 8;
   const [scanInput, setScanInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showSuccessBlink, setShowSuccessBlink] = useState<boolean>(false);
@@ -40,6 +42,19 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
   // Calcular total de productos escaneados
   const totalProductsScanned = allBarcodeRecords.reduce((sum, item) => sum + item.quantity, 0);
+  
+  // Pagination calculations
+  const totalPages = Math.ceil(allBarcodeRecords.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentPageRecords = allBarcodeRecords.slice(startIndex, endIndex);
+
+  // Reset to page 1 when records change
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [allBarcodeRecords.length, currentPage, totalPages]);
 
   const playErrorSound = () => {
     const audioContext = new (window.AudioContext ||
@@ -290,6 +305,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     setCurrentBarcode(null);
     setScannedBarcodes({});
     setScanInput("");
+    setCurrentPage(1);
   };
 
   return (
@@ -313,7 +329,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                   Total de Códigos
                 </p>
                 <p className="text-4xl font-bold text-[#038C33]">
-                  {Object.keys(scannedBarcodes).length}
+                  {allBarcodeRecords.length}
                 </p>
               </div>
               <div>
@@ -370,7 +386,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                 Códigos Registrados
               </h2>
               <p className="text-sm text-[#0D0D0D]/60 mt-1">
-                Total: {allBarcodeRecords.length} registros
+                Total: {allBarcodeRecords.length} registros | Página {currentPage} de {totalPages || 1}
               </p>
             </div>
             <div className="flex space-x-2">
@@ -390,7 +406,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
             </div>
           </div>
 
-          <div className="space-y-3 overflow-y-auto overflow-x-hidden" style={{ maxHeight: '600px' }}>
+          <div className="space-y-3" style={{ minHeight: '480px', display: 'flex', flexDirection: 'column' }}>
             {isLoadingRecords ? (
               <div className="text-center py-12">
                 <div className="w-8 h-8 border-2 border-[#038C33]/30 border-t-[#038C33] rounded-full animate-spin mx-auto mb-4"></div>
@@ -423,31 +439,88 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                 </p>
               </div>
             ) : (
-              allBarcodeRecords.map((item) => (
-                <div
-                  key={item.barcode}
-                  onClick={() => setCurrentBarcode(item)}
-                  className="p-4 bg-gradient-to-r from-[#F2F2F2] to-white rounded-xl border border-[#0D0D0D]/10 hover:border-[#038C33]/50 transition-all duration-200 hover:shadow-md cursor-pointer hover:bg-gradient-to-r hover:from-[#038C33]/5 hover:to-white"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-semibold text-[#0D0D0D] text-sm leading-tight">
-                      {item.barcode}
-                    </span>
-                    <span className="bg-[#038C33] text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-                      {item.quantity}
-                    </span>
-                  </div>
-                  <div className="text-xs text-[#0D0D0D]/60 font-medium space-y-1">
-                    <p>Último: {new Date(item.lastScanned).toLocaleString()}</p>
-                    <p>
-                      Primer: {new Date(item.firstScanned).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="mt-2 text-xs text-[#038C33] font-medium">
-                    Click para seleccionar
-                  </div>
+              <>
+                <div className="flex-1 space-y-3">
+                  {currentPageRecords.map((item) => (
+                    <div
+                      key={item.barcode}
+                      onClick={() => setCurrentBarcode(item)}
+                      className="p-4 bg-gradient-to-r from-[#F2F2F2] to-white rounded-xl border border-[#0D0D0D]/10 hover:border-[#038C33]/50 transition-all duration-200 hover:shadow-md cursor-pointer hover:bg-gradient-to-r hover:from-[#038C33]/5 hover:to-white"
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-[#0D0D0D] text-sm leading-tight">
+                          {item.barcode}
+                        </span>
+                        <span className="bg-[#038C33] text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+                          {item.quantity}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#0D0D0D]/60 font-medium space-y-1">
+                        <p>Último: {new Date(item.lastScanned).toLocaleString()}</p>
+                        <p>
+                          Primer: {new Date(item.firstScanned).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="mt-2 text-xs text-[#038C33] font-medium">
+                        Click para seleccionar
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))
+                
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex justify-between items-center pt-4 border-t border-[#0D0D0D]/10 mt-4">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-2 text-sm bg-[#0D0D0D]/10 text-[#0D0D0D] rounded-lg hover:bg-[#0D0D0D]/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      <span>Anterior</span>
+                    </button>
+                    
+                    <div className="flex space-x-2">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNumber = totalPages <= 5 
+                          ? i + 1 
+                          : currentPage <= 3 
+                            ? i + 1 
+                            : currentPage >= totalPages - 2 
+                              ? totalPages - 4 + i 
+                              : currentPage - 2 + i;
+                        
+                        return (
+                          <button
+                            key={pageNumber}
+                            onClick={() => setCurrentPage(pageNumber)}
+                            className={`w-8 h-8 text-xs rounded-lg transition-all duration-200 ${
+                              currentPage === pageNumber
+                                ? "bg-[#038C33] text-white shadow-lg"
+                                : "bg-[#0D0D0D]/10 text-[#0D0D0D] hover:bg-[#0D0D0D]/20"
+                            }`}
+                          >
+                            {pageNumber}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-2 text-sm bg-[#0D0D0D]/10 text-[#0D0D0D] rounded-lg hover:bg-[#0D0D0D]/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                    >
+                      <span>Siguiente</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
