@@ -22,7 +22,9 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   const [scannedBarcodes, setScannedBarcodes] = useState<{
     [key: string]: BarcodeEntry;
   }>({});
-  const [allBarcodeRecords, setAllBarcodeRecords] = useState<BarcodeEntry[]>([]);
+  const [allBarcodeRecords, setAllBarcodeRecords] = useState<BarcodeEntry[]>(
+    [],
+  );
   const [isLoadingRecords, setIsLoadingRecords] = useState<boolean>(false);
   const [logsRefreshTrigger, setLogsRefreshTrigger] = useState<number>(0);
   const [scanInput, setScanInput] = useState<string>("");
@@ -68,32 +70,34 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
   const fetchBarcodeRecords = async () => {
     if (!isDbConnected) return;
-    
+
     setIsLoadingRecords(true);
     try {
-      const response = await fetch('/api/scans');
+      const response = await fetch("/api/scans");
       if (response.ok) {
         const recordsData = await response.json();
-        
+
         // Check if response has error property
         if (recordsData.error) {
-          console.error('API error:', recordsData.error);
+          console.error("API error:", recordsData.error);
           setAllBarcodeRecords([]);
           return;
         }
-        
+
         // Convert object to array and sort by lastScanned in descending order (newest first)
         const recordsArray = Object.values(recordsData) as BarcodeEntry[];
-        const sortedRecords = recordsArray.sort((a: BarcodeEntry, b: BarcodeEntry) => 
-          new Date(b.lastScanned).getTime() - new Date(a.lastScanned).getTime()
+        const sortedRecords = recordsArray.sort(
+          (a: BarcodeEntry, b: BarcodeEntry) =>
+            new Date(b.lastScanned).getTime() -
+            new Date(a.lastScanned).getTime(),
         );
         setAllBarcodeRecords(sortedRecords);
       } else {
-        console.error('Failed to fetch barcode records:', response.status);
+        console.error("Failed to fetch barcode records:", response.status);
         setAllBarcodeRecords([]);
       }
     } catch (error) {
-      console.error('Error fetching barcode records:', error);
+      console.error("Error fetching barcode records:", error);
       setAllBarcodeRecords([]);
     } finally {
       setIsLoadingRecords(false);
@@ -106,7 +110,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
       const connected = await testDatabaseConnection();
       setIsDbConnected(connected);
       setIsCheckingConnection(false);
-      
+
       if (connected) {
         fetchBarcodeRecords();
       }
@@ -192,9 +196,9 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
         // Refresh the records from database
         fetchBarcodeRecords();
-        
+
         // Trigger logs refresh
-        setLogsRefreshTrigger(prev => prev + 1);
+        setLogsRefreshTrigger((prev) => prev + 1);
 
         // Show success blink
         setShowSuccessBlink(true);
@@ -267,9 +271,9 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
           // Refresh the records from database
           fetchBarcodeRecords();
-          
+
           // Trigger logs refresh
-          setLogsRefreshTrigger(prev => prev + 1);
+          setLogsRefreshTrigger((prev) => prev + 1);
         } else {
           showError(`Error al actualizar cantidad: ${response.status}`);
         }
@@ -375,7 +379,9 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
             {isLoadingRecords ? (
               <div className="text-center py-12">
                 <div className="w-8 h-8 border-2 border-[#038C33]/30 border-t-[#038C33] rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-[#0D0D0D]/60 font-medium">Cargando registros...</p>
+                <p className="text-[#0D0D0D]/60 font-medium">
+                  Cargando registros...
+                </p>
               </div>
             ) : allBarcodeRecords.length === 0 ? (
               <div className="text-center py-12">
@@ -417,9 +423,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                     </span>
                   </div>
                   <div className="text-xs text-[#0D0D0D]/60 font-medium space-y-1">
-                    <p>
-                      Último: {new Date(item.lastScanned).toLocaleString()}
-                    </p>
+                    <p>Último: {new Date(item.lastScanned).toLocaleString()}</p>
                     <p>
                       Primer: {new Date(item.firstScanned).toLocaleString()}
                     </p>
@@ -609,8 +613,8 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
       {/* Bottom Section - Full Width Logs */}
       <div>
-        <ScanLogs 
-          barcode={currentBarcode?.barcode || null} 
+        <ScanLogs
+          barcode={currentBarcode?.barcode || null}
           isDbConnected={isDbConnected}
           refreshTrigger={logsRefreshTrigger}
         />
