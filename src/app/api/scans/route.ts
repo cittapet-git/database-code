@@ -8,6 +8,34 @@ interface BarcodeEntry {
   firstScanned: string;
 }
 
+async function logScanActivity(
+  scansTestingId: number,
+  barcode: string,
+  delta: number,
+  quantityAfter: number,
+  actorName: string,
+): Promise<void> {
+  if (!supabase) {
+    throw new Error("Database not available");
+  }
+
+  const { error } = await supabase
+    .from("scans_logs")
+    .insert({
+      scans_testing_id: scansTestingId,
+      source_table: "scans_testing",
+      barcode,
+      delta,
+      quantity_after: quantityAfter,
+      actor_name: actorName,
+    });
+
+  if (error) {
+    console.error("Failed to log scan activity:", error);
+    // Don't throw error to avoid breaking the main operation
+  }
+}
+
 async function updateBarcodeInDatabase(
   barcode: string,
   responsible: string,
@@ -41,6 +69,15 @@ async function updateBarcodeInDatabase(
 
     if (error) throw error;
 
+    // Log the activity
+    await logScanActivity(
+      updatedRecord.id,
+      barcode,
+      increment,
+      newQuantity,
+      responsible,
+    );
+
     return {
       barcode: updatedRecord.barcode,
       quantity: updatedRecord.quantity,
@@ -66,6 +103,15 @@ async function updateBarcodeInDatabase(
       .single();
 
     if (error) throw error;
+
+    // Log the activity for new record
+    await logScanActivity(
+      newRecord.id,
+      barcode,
+      increment,
+      increment, // For new records, quantity_after equals the increment
+      responsible,
+    );
 
     return {
       barcode: newRecord.barcode,

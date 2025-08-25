@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { testDatabaseConnection } from "../services/api";
+import ScanLogs from "./ScanLogs";
 
 interface BarcodeEntry {
   barcode: string;
@@ -21,6 +22,9 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   const [scannedBarcodes, setScannedBarcodes] = useState<{
     [key: string]: BarcodeEntry;
   }>({});
+  const [allBarcodeRecords, setAllBarcodeRecords] = useState<BarcodeEntry[]>([]);
+  const [isLoadingRecords, setIsLoadingRecords] = useState<boolean>(false);
+  const [logsRefreshTrigger, setLogsRefreshTrigger] = useState<number>(0);
   const [scanInput, setScanInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showSuccessBlink, setShowSuccessBlink] = useState<boolean>(false);
@@ -62,12 +66,50 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     setTimeout(() => setShowErrorAlert(false), 4000);
   };
 
+  const fetchBarcodeRecords = async () => {
+    if (!isDbConnected) return;
+    
+    setIsLoadingRecords(true);
+    try {
+      const response = await fetch('/api/scans');
+      if (response.ok) {
+        const recordsData = await response.json();
+        
+        // Check if response has error property
+        if (recordsData.error) {
+          console.error('API error:', recordsData.error);
+          setAllBarcodeRecords([]);
+          return;
+        }
+        
+        // Convert object to array and sort by lastScanned in descending order (newest first)
+        const recordsArray = Object.values(recordsData) as BarcodeEntry[];
+        const sortedRecords = recordsArray.sort((a: BarcodeEntry, b: BarcodeEntry) => 
+          new Date(b.lastScanned).getTime() - new Date(a.lastScanned).getTime()
+        );
+        setAllBarcodeRecords(sortedRecords);
+      } else {
+        console.error('Failed to fetch barcode records:', response.status);
+        setAllBarcodeRecords([]);
+      }
+    } catch (error) {
+      console.error('Error fetching barcode records:', error);
+      setAllBarcodeRecords([]);
+    } finally {
+      setIsLoadingRecords(false);
+    }
+  };
+
   useEffect(() => {
     const checkDbConnection = async () => {
       setIsCheckingConnection(true);
       const connected = await testDatabaseConnection();
       setIsDbConnected(connected);
       setIsCheckingConnection(false);
+      
+      if (connected) {
+        fetchBarcodeRecords();
+      }
     };
 
     checkDbConnection();
@@ -148,6 +190,12 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
           [barcode.trim()]: barcodeEntry,
         }));
 
+        // Refresh the records from database
+        fetchBarcodeRecords();
+        
+        // Trigger logs refresh
+        setLogsRefreshTrigger(prev => prev + 1);
+
         // Show success blink
         setShowSuccessBlink(true);
         setTimeout(() => setShowSuccessBlink(false), 500);
@@ -216,6 +264,12 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
             ...prev,
             [currentBarcode.barcode]: barcodeEntry,
           }));
+
+          // Refresh the records from database
+          fetchBarcodeRecords();
+          
+          // Trigger logs refresh
+          setLogsRefreshTrigger(prev => prev + 1);
         } else {
           showError(`Error al actualizar cantidad: ${response.status}`);
         }
@@ -291,19 +345,38 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
         {/* Códigos Registrados - Lado Izquierdo */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-[#0D0D0D]">
-              Códigos Registrados
-            </h2>
-            <button
-              onClick={resetSession}
-              className="px-4 py-2 text-sm bg-[#BF0404] text-white rounded-xl hover:bg-[#BF0404]/90 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
-            >
-              Reiniciar
-            </button>
+            <div>
+              <h2 className="text-xl font-bold text-[#0D0D0D]">
+                Códigos Registrados
+              </h2>
+              <p className="text-sm text-[#0D0D0D]/60 mt-1">
+                Total: {allBarcodeRecords.length} registros
+              </p>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={fetchBarcodeRecords}
+                disabled={isLoadingRecords || !isDbConnected}
+                className="px-3 py-2 text-sm bg-[#038C33] text-white rounded-xl hover:bg-[#038C33]/90 transition-all duration-200 font-medium shadow-lg hover:shadow-xl disabled:bg-[#0D0D0D]/30"
+              >
+                {isLoadingRecords ? "..." : "🔄"}
+              </button>
+              <button
+                onClick={resetSession}
+                className="px-4 py-2 text-sm bg-[#BF0404] text-white rounded-xl hover:bg-[#BF0404]/90 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+              >
+                Reiniciar
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {Object.keys(scannedBarcodes).length === 0 ? (
+          <div className="space-y-3 max-h-[600px] overflow-y-auto">
+            {isLoadingRecords ? (
+              <div className="text-center py-12">
+                <div className="w-8 h-8 border-2 border-[#038C33]/30 border-t-[#038C33] rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-[#0D0D0D]/60 font-medium">Cargando registros...</p>
+              </div>
+            ) : allBarcodeRecords.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-[#0D0D0D]/30 mb-3">
                   <svg
@@ -321,17 +394,18 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                   </svg>
                 </div>
                 <p className="text-[#0D0D0D]/60 font-medium">
-                  No hay códigos escaneados aún
+                  No hay códigos registrados
                 </p>
                 <p className="text-[#0D0D0D]/40 text-sm">
                   Escanea tu primer código para comenzar
                 </p>
               </div>
             ) : (
-              Object.values(scannedBarcodes).map((item) => (
+              allBarcodeRecords.map((item) => (
                 <div
                   key={item.barcode}
-                  className="p-4 bg-gradient-to-r from-[#F2F2F2] to-white rounded-xl border border-[#0D0D0D]/10 hover:border-[#038C33]/30 transition-all duration-200 hover:shadow-md"
+                  onClick={() => setCurrentBarcode(item)}
+                  className="p-4 bg-gradient-to-r from-[#F2F2F2] to-white rounded-xl border border-[#0D0D0D]/10 hover:border-[#038C33]/50 transition-all duration-200 hover:shadow-md cursor-pointer hover:bg-gradient-to-r hover:from-[#038C33]/5 hover:to-white transform hover:scale-[1.02]"
                 >
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-semibold text-[#0D0D0D] text-sm leading-tight">
@@ -341,10 +415,17 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                       {item.quantity}
                     </span>
                   </div>
-                  <p className="text-xs text-[#0D0D0D]/60 font-medium">
-                    Último escaneo:{" "}
-                    {new Date(item.lastScanned).toLocaleTimeString()}
-                  </p>
+                  <div className="text-xs text-[#0D0D0D]/60 font-medium space-y-1">
+                    <p>
+                      Último: {new Date(item.lastScanned).toLocaleString()}
+                    </p>
+                    <p>
+                      Primer: {new Date(item.firstScanned).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="mt-2 text-xs text-[#038C33] font-medium">
+                    Click para seleccionar
+                  </div>
                 </div>
               ))
             )}
@@ -352,7 +433,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
         </div>
 
         {/* Código Actual - Centro */}
-        <div className="lg:col-span-2">
+        <div>
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-8">
             <h2 className="text-2xl font-bold text-[#0D0D0D] mb-6">
               Escanear Código de Barras
@@ -522,6 +603,15 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Historial de Movimientos - Lado Derecho */}
+        <div>
+          <ScanLogs 
+            barcode={currentBarcode?.barcode || null} 
+            isDbConnected={isDbConnected}
+            refreshTrigger={logsRefreshTrigger}
+          />
         </div>
       </div>
 
