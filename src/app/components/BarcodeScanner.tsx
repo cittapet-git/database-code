@@ -26,9 +26,8 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     [],
   );
   const [isLoadingRecords, setIsLoadingRecords] = useState<boolean>(false);
-  const [logsRefreshTrigger, setLogsRefreshTrigger] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 5;
   const [scanInput, setScanInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showSuccessBlink, setShowSuccessBlink] = useState<boolean>(false);
@@ -154,6 +153,19 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     };
   }, [fetchBarcodeRecords]);
 
+  // Separate effect for periodic refresh of barcode records
+  useEffect(() => {
+    if (!isDbConnected) return;
+
+    const recordsRefreshInterval = setInterval(() => {
+      fetchBarcodeRecords();
+    }, 5000); // Refresh every 15 seconds
+
+    return () => {
+      clearInterval(recordsRefreshInterval);
+    };
+  }, [isDbConnected, fetchBarcodeRecords]);
+
   useEffect(() => {
     const focusInput = () => {
       if (inputRef.current) {
@@ -219,11 +231,9 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
           [barcode.trim()]: barcodeEntry,
         }));
 
-        // Refresh the records from database
-        fetchBarcodeRecords();
+        // Records will be refreshed automatically every 15 seconds
 
-        // Trigger logs refresh
-        setLogsRefreshTrigger((prev) => prev + 1);
+        // Logs will be refreshed automatically every 15 seconds
 
         // Show success blink
         setShowSuccessBlink(true);
@@ -294,11 +304,9 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
             [currentBarcode.barcode]: barcodeEntry,
           }));
 
-          // Refresh the records from database
-          fetchBarcodeRecords();
+          // Records will be refreshed automatically every 15 seconds
 
-          // Trigger logs refresh
-          setLogsRefreshTrigger((prev) => prev + 1);
+          // Logs will be refreshed automatically every 15 seconds
         } else {
           showError(`Error al actualizar cantidad: ${response.status}`);
         }
@@ -756,13 +764,12 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
         <ScanLogs
           barcode={currentBarcode?.barcode || null}
           isDbConnected={isDbConnected}
-          refreshTrigger={logsRefreshTrigger}
         />
       </div>
 
       {/* Success Overlay */}
       {showSuccessBlink && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-green-500/30 backdrop-blur-sm animate-pulse">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-green-500/30 animate-pulse">
           <div className="bg-white rounded-3xl shadow-2xl border-4 border-green-500 p-12 text-center animate-bounce">
             <div className="text-8xl text-green-500 mb-4">✓</div>
             <h2 className="text-3xl font-bold text-green-600 mb-2">¡Éxito!</h2>

@@ -14,10 +14,9 @@ interface ScanLog {
 interface ScanLogsProps {
   barcode: string | null;
   isDbConnected: boolean;
-  refreshTrigger: number; // Used to trigger refresh when new scans happen
 }
 
-export default function ScanLogs({ barcode, isDbConnected, refreshTrigger }: ScanLogsProps) {
+export default function ScanLogs({ barcode, isDbConnected }: ScanLogsProps) {
   const [logs, setLogs] = useState<ScanLog[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -29,7 +28,9 @@ export default function ScanLogs({ barcode, isDbConnected, refreshTrigger }: Sca
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/scans/logs?barcode=${encodeURIComponent(barcode)}`);
+      const response = await fetch(
+        `/api/scans/logs?barcode=${encodeURIComponent(barcode)}`,
+      );
       if (response.ok) {
         const logsData = await response.json();
         setLogs(logsData);
@@ -47,7 +48,20 @@ export default function ScanLogs({ barcode, isDbConnected, refreshTrigger }: Sca
 
   useEffect(() => {
     fetchLogs();
-  }, [barcode, isDbConnected, refreshTrigger, fetchLogs]);
+  }, [barcode, isDbConnected, fetchLogs]);
+
+  // Separate effect for periodic refresh when there's a selected barcode
+  useEffect(() => {
+    if (!barcode || !isDbConnected) return;
+
+    const logsRefreshInterval = setInterval(() => {
+      fetchLogs();
+    }, 5000); // Refresh every 15 seconds
+
+    return () => {
+      clearInterval(logsRefreshInterval);
+    };
+  }, [barcode, isDbConnected, fetchLogs]);
 
   const formatDelta = (delta: number) => {
     return delta > 0 ? `+${delta}` : `${delta}`;
@@ -156,7 +170,9 @@ export default function ScanLogs({ barcode, isDbConnected, refreshTrigger }: Sca
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center space-x-2">
                   <span className="text-lg">{getDeltaIcon(log.delta)}</span>
-                  <span className={`font-bold text-lg ${getDeltaColor(log.delta)}`}>
+                  <span
+                    className={`font-bold text-lg ${getDeltaColor(log.delta)}`}
+                  >
                     {formatDelta(log.delta)}
                   </span>
                   {index === 0 && (
@@ -171,7 +187,7 @@ export default function ScanLogs({ barcode, isDbConnected, refreshTrigger }: Sca
                   </span>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3 text-xs text-[#0D0D0D]/60">
                 <div>
                   <p className="font-semibold mb-1">Operador:</p>
