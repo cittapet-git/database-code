@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { testDatabaseConnection } from "../services/api";
 import ScanLogs from "./ScanLogs";
 
@@ -19,7 +19,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   const [currentBarcode, setCurrentBarcode] = useState<BarcodeEntry | null>(
     null,
   );
-  const [scannedBarcodes, setScannedBarcodes] = useState<{
+  const [, setScannedBarcodes] = useState<{
     [key: string]: BarcodeEntry;
   }>({});
   const [allBarcodeRecords, setAllBarcodeRecords] = useState<BarcodeEntry[]>(
@@ -61,7 +61,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
   const playErrorSound = () => {
     const audioContext = new (window.AudioContext ||
-      (window as any).webkitAudioContext)();
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
@@ -89,7 +89,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     setTimeout(() => setShowErrorAlert(false), 4000);
   };
 
-  const fetchBarcodeRecords = async () => {
+  const fetchBarcodeRecords = useCallback(async () => {
     if (!isDbConnected) return;
 
     setIsLoadingRecords(true);
@@ -106,13 +106,21 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
         }
 
         // Convert object to array and sort by lastScanned in descending order (newest first)
-        const recordsArray = Object.values(recordsData) as BarcodeEntry[];
-        const sortedRecords = recordsArray.sort(
-          (a: BarcodeEntry, b: BarcodeEntry) =>
-            new Date(b.lastScanned).getTime() -
-            new Date(a.lastScanned).getTime(),
-        );
-        setAllBarcodeRecords(sortedRecords);
+        if (recordsData && typeof recordsData === 'object') {
+          const recordsArray = Object.values(recordsData) as BarcodeEntry[];
+          if (Array.isArray(recordsArray) && recordsArray.length > 0) {
+            const sortedRecords = recordsArray.sort(
+              (a: BarcodeEntry, b: BarcodeEntry) =>
+                new Date(b.lastScanned).getTime() -
+                new Date(a.lastScanned).getTime(),
+            );
+            setAllBarcodeRecords(sortedRecords);
+          } else {
+            setAllBarcodeRecords([]);
+          }
+        } else {
+          setAllBarcodeRecords([]);
+        }
       } else {
         console.error("Failed to fetch barcode records:", response.status);
         setAllBarcodeRecords([]);
@@ -123,7 +131,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     } finally {
       setIsLoadingRecords(false);
     }
-  };
+  }, [isDbConnected]);
 
   useEffect(() => {
     const checkDbConnection = async () => {
@@ -143,7 +151,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     return () => {
       clearInterval(connectionCheckInterval);
     };
-  }, []);
+  }, [fetchBarcodeRecords]);
 
   useEffect(() => {
     const focusInput = () => {
@@ -153,11 +161,6 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     };
 
     focusInput();
-
-    // Ensure input stays focused even if user clicks elsewhere
-    const handleFocusLoss = () => {
-      setTimeout(focusInput, 10);
-    };
 
     // Re-focus when component mounts or updates
     const intervalId = setInterval(() => {
@@ -227,7 +230,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
       } else {
         showError(`Error al procesar el código de barras: ${response.status}`);
       }
-    } catch (error) {
+    } catch {
       showError("Error de conexión al procesar el código de barras");
     } finally {
       setIsLoading(false);
@@ -298,7 +301,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
         } else {
           showError(`Error al actualizar cantidad: ${response.status}`);
         }
-      } catch (error) {
+      } catch {
         showError("Error de conexión al actualizar cantidad");
       }
     }

@@ -33,7 +33,7 @@ export const getProductByBarcode = async (barcode: string): Promise<Product | nu
     
     return product;
     
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -55,7 +55,7 @@ export const getProductImage = async (sku: string): Promise<string> => {
     
     return apiResponse.data.image_url;
     
-  } catch (error) {
+  } catch {
     return '';
   }
 };
@@ -80,7 +80,7 @@ export const updateProductQuantity = async (sku: string, quantity: number, respo
 
     return true;
     
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -105,7 +105,7 @@ export const incrementProductQuantity = async (sku: string, responsable: string)
 
     return true;
     
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -130,7 +130,7 @@ export const decrementProductQuantity = async (sku: string, responsable: string)
 
     return true;
     
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -143,7 +143,7 @@ export const testDatabaseConnection = async (): Promise<boolean> => {
     });
     
     return response.ok;
-  } catch (error) {
+  } catch {
     return false;
   }
 };

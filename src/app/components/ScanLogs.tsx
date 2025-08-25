@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface ScanLog {
   id: number;
@@ -21,7 +21,7 @@ export default function ScanLogs({ barcode, isDbConnected, refreshTrigger }: Sca
   const [logs, setLogs] = useState<ScanLog[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     if (!barcode || !isDbConnected) {
       setLogs([]);
       return;
@@ -43,11 +43,11 @@ export default function ScanLogs({ barcode, isDbConnected, refreshTrigger }: Sca
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [barcode, isDbConnected]);
 
   useEffect(() => {
     fetchLogs();
-  }, [barcode, isDbConnected, refreshTrigger]);
+  }, [barcode, isDbConnected, refreshTrigger, fetchLogs]);
 
   const formatDelta = (delta: number) => {
     return delta > 0 ? `+${delta}` : `${delta}`;

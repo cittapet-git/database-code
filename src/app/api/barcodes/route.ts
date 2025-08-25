@@ -19,7 +19,7 @@ async function readBarcodesFile(): Promise<BarcodesData> {
   try {
     const data = await fs.readFile(BARCODES_FILE, "utf8");
     return JSON.parse(data);
-  } catch (error) {
+  } catch {
     return {};
   }
 }
@@ -32,7 +32,7 @@ export async function GET() {
   try {
     const barcodes = await readBarcodesFile();
     return NextResponse.json(barcodes);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to read barcodes" },
       { status: 500 },
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     await writeBarcodesFile(barcodes);
 
     return NextResponse.json(barcodes[barcode]);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to process barcode" },
       { status: 500 },

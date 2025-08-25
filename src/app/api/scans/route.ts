@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase, ScanRecord } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 interface BarcodeEntry {
   barcode: string;
@@ -176,14 +176,16 @@ export async function GET() {
 
     // Transform database records to match frontend interface
     const transformedScans: { [key: string]: BarcodeEntry } = {};
-    scans?.forEach((scan) => {
-      transformedScans[scan.barcode] = {
-        barcode: scan.barcode,
-        quantity: scan.quantity,
-        lastScanned: scan.last_scan,
-        firstScanned: scan.first_scan,
-      };
-    });
+    if (scans && Array.isArray(scans)) {
+      scans.forEach((scan) => {
+        transformedScans[scan.barcode] = {
+          barcode: scan.barcode,
+          quantity: scan.quantity,
+          lastScanned: scan.last_scan,
+          firstScanned: scan.first_scan,
+        };
+      });
+    }
 
     return NextResponse.json(transformedScans);
   } catch (error) {

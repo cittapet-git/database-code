@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
  * @param {Request} request - The incoming request object.
  * @returns {NextResponse} A JSON response with a list of sample products following the Saprod structure.
  */
-export async function GET(request: Request) {
+export async function GET() {
   // Provisional data for a list of products with the specified structure
   const sampleProducts = [
     {
