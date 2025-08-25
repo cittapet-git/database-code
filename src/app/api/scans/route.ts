@@ -9,7 +9,7 @@ interface BarcodeEntry {
 }
 
 async function logScanActivity(
-  scansTestingId: number,
+  scansId: number,
   barcode: string,
   delta: number,
   quantityAfter: number,
@@ -19,16 +19,14 @@ async function logScanActivity(
     throw new Error("Database not available");
   }
 
-  const { error } = await supabase
-    .from("scans_logs")
-    .insert({
-      scans_testing_id: scansTestingId,
-      source_table: "scans_testing",
-      barcode,
-      delta,
-      quantity_after: quantityAfter,
-      actor_name: actorName,
-    });
+  const { error } = await supabase.from("scans_logs").insert({
+    scans_id: scansId,
+    source_table: "scans",
+    barcode,
+    delta,
+    quantity_after: quantityAfter,
+    actor_name: actorName,
+  });
 
   if (error) {
     console.error("Failed to log scan activity:", error);
@@ -48,7 +46,7 @@ async function updateBarcodeInDatabase(
 
   // First, try to get existing record
   const { data: existingRecord } = await supabase
-    .from("scans_testing")
+    .from("scans")
     .select("*")
     .eq("barcode", barcode)
     .single();
@@ -57,7 +55,7 @@ async function updateBarcodeInDatabase(
     // Update existing record
     const newQuantity = Math.max(0, existingRecord.quantity + increment);
     const { data: updatedRecord, error } = await supabase
-      .from("scans_testing")
+      .from("scans")
       .update({
         quantity: newQuantity,
         last_scan: now,
@@ -91,7 +89,7 @@ async function updateBarcodeInDatabase(
     }
 
     const { data: newRecord, error } = await supabase
-      .from("scans_testing")
+      .from("scans")
       .insert({
         barcode,
         quantity: increment,
@@ -168,7 +166,7 @@ export async function GET() {
     }
 
     const { data: scans, error } = await supabase
-      .from("scans_testing")
+      .from("scans")
       .select("*")
       .order("last_scan", { ascending: false });
 

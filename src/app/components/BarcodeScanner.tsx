@@ -41,8 +41,11 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   const lastScannedRef = useRef<{ barcode: string; time: number } | null>(null);
 
   // Calcular total de productos escaneados
-  const totalProductsScanned = allBarcodeRecords.reduce((sum, item) => sum + item.quantity, 0);
-  
+  const totalProductsScanned = allBarcodeRecords.reduce(
+    (sum, item) => sum + item.quantity,
+    0,
+  );
+
   // Pagination calculations
   const totalPages = Math.ceil(allBarcodeRecords.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -377,16 +380,23 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
       </div>
 
       {/* Top Section - Two Columns with Fixed Height */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" style={{ height: 'fit-content' }}>
+      <div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6"
+        style={{ height: "fit-content" }}
+      >
         {/* Códigos Registrados - Lado Izquierdo */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-6 flex flex-col" style={{ height: 'fit-content' }}>
+        <div
+          className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-6 flex flex-col"
+          style={{ height: "fit-content" }}
+        >
           <div className="flex justify-between items-center mb-6 flex-shrink-0">
             <div>
               <h2 className="text-xl font-bold text-[#0D0D0D]">
                 Códigos Registrados
               </h2>
               <p className="text-sm text-[#0D0D0D]/60 mt-1">
-                Total: {allBarcodeRecords.length} registros | Página {currentPage} de {totalPages || 1}
+                Total: {allBarcodeRecords.length} registros | Página{" "}
+                {currentPage} de {totalPages || 1}
               </p>
             </div>
             <div className="flex space-x-2">
@@ -406,7 +416,14 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
             </div>
           </div>
 
-          <div className="space-y-3" style={{ minHeight: '480px', display: 'flex', flexDirection: 'column' }}>
+          <div
+            className="space-y-3"
+            style={{
+              minHeight: "480px",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
             {isLoadingRecords ? (
               <div className="text-center py-12">
                 <div className="w-8 h-8 border-2 border-[#038C33]/30 border-t-[#038C33] rounded-full animate-spin mx-auto mb-4"></div>
@@ -456,7 +473,9 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                         </span>
                       </div>
                       <div className="text-xs text-[#0D0D0D]/60 font-medium space-y-1">
-                        <p>Último: {new Date(item.lastScanned).toLocaleString()}</p>
+                        <p>
+                          Último: {new Date(item.lastScanned).toLocaleString()}
+                        </p>
                         <p>
                           Primer: {new Date(item.firstScanned).toLocaleString()}
                         </p>
@@ -467,55 +486,83 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                     </div>
                   ))}
                 </div>
-                
+
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
                   <div className="flex justify-between items-center pt-4 border-t border-[#0D0D0D]/10 mt-4">
                     <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
                       disabled={currentPage === 1}
                       className="px-3 py-2 text-sm bg-[#0D0D0D]/10 text-[#0D0D0D] rounded-lg hover:bg-[#0D0D0D]/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 19l-7-7 7-7"
+                        />
                       </svg>
                       <span>Anterior</span>
                     </button>
-                    
+
                     <div className="flex space-x-2">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        const pageNumber = totalPages <= 5 
-                          ? i + 1 
-                          : currentPage <= 3 
-                            ? i + 1 
-                            : currentPage >= totalPages - 2 
-                              ? totalPages - 4 + i 
-                              : currentPage - 2 + i;
-                        
-                        return (
-                          <button
-                            key={pageNumber}
-                            onClick={() => setCurrentPage(pageNumber)}
-                            className={`w-8 h-8 text-xs rounded-lg transition-all duration-200 ${
-                              currentPage === pageNumber
-                                ? "bg-[#038C33] text-white shadow-lg"
-                                : "bg-[#0D0D0D]/10 text-[#0D0D0D] hover:bg-[#0D0D0D]/20"
-                            }`}
-                          >
-                            {pageNumber}
-                          </button>
-                        );
-                      })}
+                      {Array.from(
+                        { length: Math.min(5, totalPages) },
+                        (_, i) => {
+                          const pageNumber =
+                            totalPages <= 5
+                              ? i + 1
+                              : currentPage <= 3
+                                ? i + 1
+                                : currentPage >= totalPages - 2
+                                  ? totalPages - 4 + i
+                                  : currentPage - 2 + i;
+
+                          return (
+                            <button
+                              key={pageNumber}
+                              onClick={() => setCurrentPage(pageNumber)}
+                              className={`w-8 h-8 text-xs rounded-lg transition-all duration-200 ${
+                                currentPage === pageNumber
+                                  ? "bg-[#038C33] text-white shadow-lg"
+                                  : "bg-[#0D0D0D]/10 text-[#0D0D0D] hover:bg-[#0D0D0D]/20"
+                              }`}
+                            >
+                              {pageNumber}
+                            </button>
+                          );
+                        },
+                      )}
                     </div>
-                    
+
                     <button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                      }
                       disabled={currentPage === totalPages}
                       className="px-3 py-2 text-sm bg-[#0D0D0D]/10 text-[#0D0D0D] rounded-lg hover:bg-[#0D0D0D]/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
                     >
                       <span>Siguiente</span>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -526,7 +573,10 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
         </div>
 
         {/* Código Actual - Lado Derecho */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-8" style={{ height: 'fit-content' }}>
+        <div
+          className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-8"
+          style={{ height: "fit-content" }}
+        >
           <h2 className="text-2xl font-bold text-[#0D0D0D] mb-6">
             Escanear Código de Barras
           </h2>
