@@ -28,7 +28,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   const [isLoadingRecords, setIsLoadingRecords] = useState<boolean>(false);
   const [logsRefreshTrigger, setLogsRefreshTrigger] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 6;
   const [scanInput, setScanInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showSuccessBlink, setShowSuccessBlink] = useState<boolean>(false);
@@ -61,7 +61,8 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
   const playErrorSound = () => {
     const audioContext = new (window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
@@ -106,7 +107,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
         }
 
         // Convert object to array and sort by lastScanned in descending order (newest first)
-        if (recordsData && typeof recordsData === 'object') {
+        if (recordsData && typeof recordsData === "object") {
           const recordsArray = Object.values(recordsData) as BarcodeEntry[];
           if (Array.isArray(recordsArray) && recordsArray.length > 0) {
             const sortedRecords = recordsArray.sort(
@@ -384,12 +385,12 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
       {/* Top Section - Two Columns with Fixed Height */}
       <div
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6"
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6"
         style={{ height: "fit-content" }}
       >
         {/* Códigos Registrados - Lado Izquierdo */}
         <div
-          className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-6 flex flex-col"
+          className="col-span-1 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-6 flex flex-col"
           style={{ height: "fit-content" }}
         >
           <div className="flex justify-between items-center mb-6 flex-shrink-0">
@@ -577,7 +578,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
         {/* Código Actual - Lado Derecho */}
         <div
-          className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-8"
+          className="col-span-2 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-8"
           style={{ height: "fit-content" }}
         >
           <h2 className="text-2xl font-bold text-[#0D0D0D] mb-6">
