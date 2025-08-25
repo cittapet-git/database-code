@@ -36,6 +36,9 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const lastScannedRef = useRef<{ barcode: string; time: number } | null>(null);
 
+  // Calcular total de productos escaneados
+  const totalProductsScanned = allBarcodeRecords.reduce((sum, item) => sum + item.quantity, 0);
+
   const playErrorSound = () => {
     const audioContext = new (window.AudioContext ||
       (window as any).webkitAudioContext)();
@@ -300,12 +303,24 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
             </p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-[#0D0D0D]/60 font-medium">
-              Total de Códigos
-            </p>
-            <p className="text-4xl font-bold text-[#038C33]">
-              {Object.keys(scannedBarcodes).length}
-            </p>
+            <div className="flex space-x-8">
+              <div>
+                <p className="text-sm text-[#0D0D0D]/60 font-medium">
+                  Total de Códigos
+                </p>
+                <p className="text-4xl font-bold text-[#038C33]">
+                  {Object.keys(scannedBarcodes).length}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-[#0D0D0D]/60 font-medium">
+                  Total Productos Escaneados
+                </p>
+                <p className="text-4xl font-bold text-[#038C33]">
+                  {totalProductsScanned}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -370,7 +385,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
             </div>
           </div>
 
-          <div className="space-y-3 max-h-[600px] overflow-y-auto">
+          <div className="space-y-3 h-full">
             {isLoadingRecords ? (
               <div className="text-center py-12">
                 <div className="w-8 h-8 border-2 border-[#038C33]/30 border-t-[#038C33] rounded-full animate-spin mx-auto mb-4"></div>
