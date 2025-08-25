@@ -80,7 +80,10 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
       const response = await fetch("/api/scans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ barcode: barcode.trim(), responsible: userName }),
+        body: JSON.stringify({
+          barcode: barcode.trim(),
+          responsible: userName,
+        }),
       });
 
       if (response.ok) {
@@ -458,14 +461,11 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
             <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
             Los códigos nuevos se crean automáticamente
           </li>
-          <li className="flex items-start">
+          {/*<li className="flex items-start">
             <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
             Usa los botones + y - para ajustar la cantidad manualmente
-          </li>
-          <li className="flex items-start">
-            <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
-            Todos los datos se guardan localmente en un archivo JSON
-          </li>
+          </li>*/}
+
           <li className="flex items-start">
             <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
             Sistema rápido y simple para registro de códigos
@@ -479,7 +479,9 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
           <div className="bg-white rounded-3xl shadow-2xl border-4 border-green-500 p-12 text-center transform scale-110 animate-bounce">
             <div className="text-8xl text-green-500 mb-4">✓</div>
             <h2 className="text-3xl font-bold text-green-600 mb-2">¡Éxito!</h2>
-            <p className="text-lg text-gray-700">Código registrado correctamente</p>
+            <p className="text-lg text-gray-700">
+              Código registrado correctamente
+            </p>
           </div>
         </div>
       )}
