@@ -356,7 +356,8 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Top Section - Two Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Códigos Registrados - Lado Izquierdo */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-6">
           <div className="flex justify-between items-center mb-6">
@@ -447,7 +448,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
           </div>
         </div>
 
-        {/* Código Actual - Centro */}
+        {/* Código Actual - Lado Derecho */}
         <div>
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-8">
             <h2 className="text-2xl font-bold text-[#0D0D0D] mb-6">
@@ -619,15 +620,15 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
             )}
           </div>
         </div>
+      </div>
 
-        {/* Historial de Movimientos - Lado Derecho */}
-        <div>
-          <ScanLogs 
-            barcode={currentBarcode?.barcode || null} 
-            isDbConnected={isDbConnected}
-            refreshTrigger={logsRefreshTrigger}
-          />
-        </div>
+      {/* Bottom Section - Full Width Logs */}
+      <div>
+        <ScanLogs 
+          barcode={currentBarcode?.barcode || null} 
+          isDbConnected={isDbConnected}
+          refreshTrigger={logsRefreshTrigger}
+        />
       </div>
 
       {/* Success Overlay */}
