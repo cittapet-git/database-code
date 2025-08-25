@@ -385,7 +385,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
       {/* Top Section - Two Columns with Fixed Height */}
       <div
-        className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6"
         style={{ height: "fit-content" }}
       >
         {/* Códigos Registrados - Lado Izquierdo */}
@@ -578,7 +578,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
         {/* Código Actual - Lado Derecho */}
         <div
-          className="col-span-2 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-8"
+          className="col-span-1 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-8"
           style={{ height: "fit-content" }}
         >
           <h2 className="text-2xl font-bold text-[#0D0D0D] mb-6">
