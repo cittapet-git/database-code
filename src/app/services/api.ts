@@ -134,3 +134,16 @@ export const decrementProductQuantity = async (sku: string, responsable: string)
     return false;
   }
 };
+
+export const testDatabaseConnection = async (): Promise<boolean> => {
+  try {
+    const response = await fetch('/api/scans', {
+      method: 'GET',
+      cache: 'no-cache'
+    });
+    
+    return response.ok;
+  } catch (error) {
+    return false;
+  }
+};

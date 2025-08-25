@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { testDatabaseConnection } from "../services/api";
 
 interface BarcodeEntry {
   barcode: string;
@@ -23,8 +24,59 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   const [scanInput, setScanInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showSuccessBlink, setShowSuccessBlink] = useState<boolean>(false);
+  const [isDbConnected, setIsDbConnected] = useState<boolean>(true);
+  const [isCheckingConnection, setIsCheckingConnection] =
+    useState<boolean>(true);
+  const [showErrorAlert, setShowErrorAlert] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
   const lastScannedRef = useRef<{ barcode: string; time: number } | null>(null);
+
+  const playErrorSound = () => {
+    const audioContext = new (window.AudioContext ||
+      (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    oscillator.frequency.setValueAtTime(400, audioContext.currentTime + 0.2);
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.4);
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.01,
+      audioContext.currentTime + 0.6,
+    );
+
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.6);
+  };
+
+  const showError = (message: string) => {
+    setErrorMessage(message);
+    setShowErrorAlert(true);
+    playErrorSound();
+    setTimeout(() => setShowErrorAlert(false), 4000);
+  };
+
+  useEffect(() => {
+    const checkDbConnection = async () => {
+      setIsCheckingConnection(true);
+      const connected = await testDatabaseConnection();
+      setIsDbConnected(connected);
+      setIsCheckingConnection(false);
+    };
+
+    checkDbConnection();
+    const connectionCheckInterval = setInterval(checkDbConnection, 30000);
+
+    return () => {
+      clearInterval(connectionCheckInterval);
+    };
+  }, []);
 
   useEffect(() => {
     const focusInput = () => {
@@ -57,7 +109,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   }, [isLoading]);
 
   const handleScan = async (barcode: string) => {
-    if (!barcode.trim()) return;
+    if (!barcode.trim() || !isDbConnected) return;
 
     // Prevent duplicate scans within 500ms
     const now = Date.now();
@@ -100,10 +152,10 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
         setShowSuccessBlink(true);
         setTimeout(() => setShowSuccessBlink(false), 500);
       } else {
-        alert("Error al procesar el código de barras");
+        showError(`Error al procesar el código de barras: ${response.status}`);
       }
     } catch (error) {
-      alert("Error al procesar el código de barras");
+      showError("Error de conexión al procesar el código de barras");
     } finally {
       setIsLoading(false);
       setScanInput("");
@@ -136,7 +188,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   };
 
   const handleQuantityChange = async (increment: number) => {
-    if (!currentBarcode) return;
+    if (!currentBarcode || !isDbConnected) return;
 
     const newQuantity = currentBarcode.quantity + increment;
     if (newQuantity < 0) return;
@@ -144,18 +196,32 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     if (increment > 0) {
       await handleScan(currentBarcode.barcode);
     } else {
-      // For decrement, we'll manually update the quantity
-      const updatedEntry = {
-        ...currentBarcode,
-        quantity: newQuantity,
-        lastScanned: new Date().toISOString(),
-      };
+      // For decrement, we need to call the API with -1 increment
+      try {
+        const response = await fetch("/api/scans", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            barcode: currentBarcode.barcode,
+            responsible: userName,
+            increment: -1,
+          }),
+        });
 
-      setCurrentBarcode(updatedEntry);
-      setScannedBarcodes((prev) => ({
-        ...prev,
-        [currentBarcode.barcode]: updatedEntry,
-      }));
+        if (response.ok) {
+          const barcodeEntry = await response.json();
+          setCurrentBarcode(barcodeEntry);
+
+          setScannedBarcodes((prev) => ({
+            ...prev,
+            [currentBarcode.barcode]: barcodeEntry,
+          }));
+        } else {
+          showError(`Error al actualizar cantidad: ${response.status}`);
+        }
+      } catch (error) {
+        showError("Error de conexión al actualizar cantidad");
+      }
     }
   };
 
@@ -187,6 +253,37 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
               {Object.keys(scannedBarcodes).length}
             </p>
           </div>
+        </div>
+
+        {/* Estado de conexión */}
+        <div className="mt-6 p-4 rounded-xl border-2 bg-white/50 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div
+                className={`w-4 h-4 rounded-full ${isCheckingConnection ? "bg-yellow-500 animate-pulse" : isDbConnected ? "bg-green-500" : "bg-red-500"}`}
+              ></div>
+              <span className="text-sm font-semibold text-[#0D0D0D]/80">
+                Estado de Base de Datos:
+              </span>
+            </div>
+            <span
+              className={`text-sm font-bold ${isCheckingConnection ? "text-yellow-600" : isDbConnected ? "text-green-600" : "text-red-600"}`}
+            >
+              {isCheckingConnection
+                ? "Verificando..."
+                : isDbConnected
+                  ? "Conectado"
+                  : "Sin Conexión"}
+            </span>
+          </div>
+          {!isDbConnected && !isCheckingConnection && (
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm font-medium">
+                ⚠️ Sin conexión a la base de datos. No se pueden realizar
+                cambios ni registrar productos.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -281,13 +378,13 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                   autoFocus
                   autoComplete="off"
                   spellCheck="false"
-                  disabled={isLoading}
+                  disabled={isLoading || !isDbConnected}
                 />
               </div>
 
               <button
                 onClick={() => handleScan(scanInput)}
-                disabled={!scanInput.trim() || isLoading}
+                disabled={!scanInput.trim() || isLoading || !isDbConnected}
                 className="w-full bg-[#038C33] text-white py-4 px-6 rounded-xl font-bold text-lg hover:bg-[#038C33]/90 disabled:bg-[#0D0D0D]/30 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
               >
                 {isLoading ? (
@@ -295,6 +392,8 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     <span>Procesando...</span>
                   </div>
+                ) : !isDbConnected ? (
+                  "Sin conexión a BD"
                 ) : (
                   "Procesar Escaneo"
                 )}
@@ -343,7 +442,11 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                     <button
                       onClick={() => handleQuantityChange(-1)}
                       className="w-16 h-16 bg-[#BF0404] text-white rounded-2xl hover:bg-[#BF0404]/90 focus:ring-4 focus:ring-[#BF0404]/30 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:bg-[#0D0D0D]/30 disabled:cursor-not-allowed"
-                      disabled={!currentBarcode || currentBarcode.quantity <= 0}
+                      disabled={
+                        !currentBarcode ||
+                        currentBarcode.quantity <= 0 ||
+                        !isDbConnected
+                      }
                     >
                       <svg
                         className="w-8 h-8"
@@ -369,7 +472,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                     <button
                       onClick={() => handleQuantityChange(1)}
                       className="w-16 h-16 bg-[#038C33] text-white rounded-2xl hover:bg-[#038C33]/90 focus:ring-4 focus:ring-[#038C33]/30 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:bg-[#0D0D0D]/30 disabled:cursor-not-allowed"
-                      disabled={!currentBarcode}
+                      disabled={!currentBarcode || !isDbConnected}
                     >
                       <svg
                         className="w-8 h-8"
@@ -422,57 +525,6 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
         </div>
       </div>
 
-      {/* Instrucciones */}
-      <div className="mt-8 bg-gradient-to-r from-[#F2F2F2] via-white to-[#F2F2F2] rounded-2xl p-6 border border-[#0D0D0D]/20 shadow-lg">
-        <h3 className="font-bold text-[#0D0D0D] mb-4 text-lg flex items-center">
-          <svg
-            className="w-6 h-6 text-[#038C33] mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          Instrucciones de Uso
-        </h3>
-        <ul className="text-sm text-[#0D0D0D]/80 space-y-2">
-          <li className="flex items-start">
-            <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
-            Coloca el cursor en el campo de código de barras
-          </li>
-          <li className="flex items-start">
-            <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
-            Escanea el código con tu lector de código de barras
-          </li>
-          <li className="flex items-start">
-            <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
-            El código se registrará automáticamente en el sistema
-          </li>
-          <li className="flex items-start">
-            <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
-            Cada escaneo del mismo código suma +1 a la cantidad
-          </li>
-          <li className="flex items-start">
-            <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
-            Los códigos nuevos se crean automáticamente
-          </li>
-          {/*<li className="flex items-start">
-            <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
-            Usa los botones + y - para ajustar la cantidad manualmente
-          </li>*/}
-
-          <li className="flex items-start">
-            <span className="w-2 h-2 bg-[#038C33] rounded-full mt-2 mr-3 flex-shrink-0"></span>
-            Sistema rápido y simple para registro de códigos
-          </li>
-        </ul>
-      </div>
-
       {/* Success Overlay */}
       {showSuccessBlink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-green-500/30 backdrop-blur-sm animate-pulse">
@@ -482,6 +534,23 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
             <p className="text-lg text-gray-700">
               Código registrado correctamente
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Error Overlay */}
+      {showErrorAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-500/30 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl border-4 border-red-500 p-12 text-center transform scale-110 animate-pulse">
+            <div className="text-8xl text-red-500 mb-4">⚠️</div>
+            <h2 className="text-3xl font-bold text-red-600 mb-2">¡Error!</h2>
+            <p className="text-lg text-gray-700">{errorMessage}</p>
+            <button
+              onClick={() => setShowErrorAlert(false)}
+              className="mt-6 px-6 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-all duration-200"
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       )}

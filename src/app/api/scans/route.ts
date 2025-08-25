@@ -8,29 +8,34 @@ interface BarcodeEntry {
   firstScanned: string;
 }
 
-async function updateBarcodeInDatabase(barcode: string, responsible: string, now: string): Promise<BarcodeEntry> {
+async function updateBarcodeInDatabase(
+  barcode: string,
+  responsible: string,
+  now: string,
+  increment: number = 1,
+): Promise<BarcodeEntry> {
   if (!supabase) {
-    throw new Error('Database not available');
+    throw new Error("Database not available");
   }
 
   // First, try to get existing record
   const { data: existingRecord } = await supabase
-    .from('scans')
-    .select('*')
-    .eq('barcode', barcode)
+    .from("scans_testing")
+    .select("*")
+    .eq("barcode", barcode)
     .single();
 
   if (existingRecord) {
     // Update existing record
-    const newQuantity = existingRecord.quantity + 1;
+    const newQuantity = Math.max(0, existingRecord.quantity + increment);
     const { data: updatedRecord, error } = await supabase
-      .from('scans')
+      .from("scans_testing")
       .update({
         quantity: newQuantity,
         last_scan: now,
         responsible,
       })
-      .eq('barcode', barcode)
+      .eq("barcode", barcode)
       .select()
       .single();
 
@@ -43,12 +48,16 @@ async function updateBarcodeInDatabase(barcode: string, responsible: string, now
       firstScanned: updatedRecord.first_scan,
     };
   } else {
-    // Create new record
+    // Create new record only if increment is positive
+    if (increment <= 0) {
+      throw new Error("Cannot create new record with negative quantity");
+    }
+
     const { data: newRecord, error } = await supabase
-      .from('scans')
+      .from("scans_testing")
       .insert({
         barcode,
-        quantity: 1,
+        quantity: increment,
         first_scan: now,
         last_scan: now,
         responsible,
@@ -69,7 +78,7 @@ async function updateBarcodeInDatabase(barcode: string, responsible: string, now
 
 export async function POST(request: Request) {
   try {
-    const { barcode, responsible } = await request.json();
+    const { barcode, responsible, increment = 1 } = await request.json();
 
     if (!barcode || !responsible) {
       return NextResponse.json(
@@ -81,13 +90,23 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
 
     // Use database as primary storage
-    const barcodeEntry = await updateBarcodeInDatabase(barcode, responsible, now);
+    const barcodeEntry = await updateBarcodeInDatabase(
+      barcode,
+      responsible,
+      now,
+      increment,
+    );
 
     return NextResponse.json(barcodeEntry);
   } catch (error) {
-    console.error('API error:', error);
+    console.error("API error:", error);
     return NextResponse.json(
-      { error: "Failed to process barcode scan" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to process barcode scan",
+      },
       { status: 500 },
     );
   }
@@ -103,9 +122,9 @@ export async function GET() {
     }
 
     const { data: scans, error } = await supabase
-      .from('scans')
-      .select('*')
-      .order('last_scan', { ascending: false });
+      .from("scans_testing")
+      .select("*")
+      .order("last_scan", { ascending: false });
 
     if (error) {
       throw error;
@@ -113,7 +132,7 @@ export async function GET() {
 
     // Transform database records to match frontend interface
     const transformedScans: { [key: string]: BarcodeEntry } = {};
-    scans?.forEach(scan => {
+    scans?.forEach((scan) => {
       transformedScans[scan.barcode] = {
         barcode: scan.barcode,
         quantity: scan.quantity,
@@ -124,7 +143,7 @@ export async function GET() {
 
     return NextResponse.json(transformedScans);
   } catch (error) {
-    console.error('GET error:', error);
+    console.error("GET error:", error);
     return NextResponse.json(
       { error: "Failed to fetch scan data" },
       { status: 500 },
