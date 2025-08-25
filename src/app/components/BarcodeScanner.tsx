@@ -28,7 +28,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   const [isLoadingRecords, setIsLoadingRecords] = useState<boolean>(false);
   const [logsRefreshTrigger, setLogsRefreshTrigger] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 4;
   const [scanInput, setScanInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showSuccessBlink, setShowSuccessBlink] = useState<boolean>(false);
@@ -630,12 +630,6 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
           {/* Código Actual */}
           {currentBarcode ? (
             <div className="text-center p-10 bg-gradient-to-br from-[#F2F2F2] via-white to-[#F2F2F2] rounded-3xl border-2 border-[#0D0D0D]/20 shadow-2xl">
-              <div className="mb-8">
-                <div className="w-56 h-56 mx-auto bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl flex items-center justify-center border-2 border-[#0D0D0D]/20">
-                  <div className="text-6xl text-[#038C33]">📦</div>
-                </div>
-              </div>
-
               <h3 className="text-3xl font-bold text-[#0D0D0D] mb-6 leading-tight">
                 {currentBarcode.barcode}
               </h3>
@@ -716,10 +710,6 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                     </svg>
                   </button>
                 </div>
-
-                <p className="text-sm text-[#0D0D0D]/70 mt-4 font-medium">
-                  Usa los botones + y - para ajustar la cantidad manualmente
-                </p>
               </div>
             </div>
           ) : (
