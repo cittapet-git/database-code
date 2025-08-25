@@ -38,6 +38,9 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const lastScannedRef = useRef<{ barcode: string; time: number } | null>(null);
 
+  // Calcular total de productos escaneados
+  const totalProductsScanned = allBarcodeRecords.reduce((sum, item) => sum + item.quantity, 0);
+
   const playErrorSound = () => {
     const audioContext = new (window.AudioContext ||
       (window as any).webkitAudioContext)();
@@ -304,12 +307,24 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
             </p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-[#0D0D0D]/60 font-medium">
-              Total de Códigos
-            </p>
-            <p className="text-4xl font-bold text-[#038C33]">
-              {Object.keys(scannedBarcodes).length}
-            </p>
+            <div className="flex space-x-8">
+              <div>
+                <p className="text-sm text-[#0D0D0D]/60 font-medium">
+                  Total de Códigos
+                </p>
+                <p className="text-4xl font-bold text-[#038C33]">
+                  {Object.keys(scannedBarcodes).length}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-[#0D0D0D]/60 font-medium">
+                  Total Productos Escaneados
+                </p>
+                <p className="text-4xl font-bold text-[#038C33]">
+                  {totalProductsScanned}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -345,11 +360,11 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
         </div>
       </div>
 
-      {/* Top Section - Two Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {/* Top Section - Two Columns with Fixed Height */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" style={{ height: 'fit-content' }}>
         {/* Códigos Registrados - Lado Izquierdo */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-6">
-          <div className="flex justify-between items-center mb-6">
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-6 flex flex-col" style={{ height: 'fit-content' }}>
+          <div className="flex justify-between items-center mb-6 flex-shrink-0">
             <div>
               <h2 className="text-xl font-bold text-[#0D0D0D]">
                 Códigos Registrados
@@ -375,7 +390,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
             </div>
           </div>
 
-          <div className="space-y-3 max-h-[600px] overflow-y-auto">
+          <div className="space-y-3 overflow-y-auto overflow-x-hidden" style={{ maxHeight: '600px' }}>
             {isLoadingRecords ? (
               <div className="text-center py-12">
                 <div className="w-8 h-8 border-2 border-[#038C33]/30 border-t-[#038C33] rounded-full animate-spin mx-auto mb-4"></div>
@@ -412,7 +427,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                 <div
                   key={item.barcode}
                   onClick={() => setCurrentBarcode(item)}
-                  className="p-4 bg-gradient-to-r from-[#F2F2F2] to-white rounded-xl border border-[#0D0D0D]/10 hover:border-[#038C33]/50 transition-all duration-200 hover:shadow-md cursor-pointer hover:bg-gradient-to-r hover:from-[#038C33]/5 hover:to-white transform hover:scale-[1.02]"
+                  className="p-4 bg-gradient-to-r from-[#F2F2F2] to-white rounded-xl border border-[#0D0D0D]/10 hover:border-[#038C33]/50 transition-all duration-200 hover:shadow-md cursor-pointer hover:bg-gradient-to-r hover:from-[#038C33]/5 hover:to-white"
                 >
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-semibold text-[#0D0D0D] text-sm leading-tight">
@@ -438,176 +453,174 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
         </div>
 
         {/* Código Actual - Lado Derecho */}
-        <div>
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-8">
-            <h2 className="text-2xl font-bold text-[#0D0D0D] mb-6">
-              Escanear Código de Barras
-            </h2>
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-[#0D0D0D]/10 p-8" style={{ height: 'fit-content' }}>
+          <h2 className="text-2xl font-bold text-[#0D0D0D] mb-6">
+            Escanear Código de Barras
+          </h2>
 
-            <div className="space-y-6 mb-8">
-              <div>
-                <label
-                  htmlFor="barcodeInput"
-                  className="block text-sm font-semibold text-[#0D0D0D]/80 mb-3"
-                >
-                  Código de Barras
-                </label>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  id="barcodeInput"
-                  value={scanInput}
-                  onChange={handleInputChange}
-                  onKeyDown={handleInputKeyPress}
-                  className="w-full px-6 py-4 text-xl border-2 border-[#0D0D0D]/20 rounded-xl focus:ring-4 focus:ring-[#038C33]/20 focus:border-[#038C33] transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                  placeholder="Listo para escanear..."
-                  autoFocus
-                  autoComplete="off"
-                  spellCheck="false"
-                  disabled={isLoading || !isDbConnected}
-                />
-              </div>
-
-              <button
-                onClick={() => handleScan(scanInput)}
-                disabled={!scanInput.trim() || isLoading || !isDbConnected}
-                className="w-full bg-[#038C33] text-white py-4 px-6 rounded-xl font-bold text-lg hover:bg-[#038C33]/90 disabled:bg-[#0D0D0D]/30 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+          <div className="space-y-6 mb-8">
+            <div>
+              <label
+                htmlFor="barcodeInput"
+                className="block text-sm font-semibold text-[#0D0D0D]/80 mb-3"
               >
-                {isLoading ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Procesando...</span>
-                  </div>
-                ) : !isDbConnected ? (
-                  "Sin conexión a BD"
-                ) : (
-                  "Procesar Escaneo"
-                )}
-              </button>
+                Código de Barras
+              </label>
+              <input
+                ref={inputRef}
+                type="text"
+                id="barcodeInput"
+                value={scanInput}
+                onChange={handleInputChange}
+                onKeyDown={handleInputKeyPress}
+                className="w-full px-6 py-4 text-xl border-2 border-[#0D0D0D]/20 rounded-xl focus:ring-4 focus:ring-[#038C33]/20 focus:border-[#038C33] transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                placeholder="Listo para escanear..."
+                autoFocus
+                autoComplete="off"
+                spellCheck="false"
+                disabled={isLoading || !isDbConnected}
+              />
             </div>
 
-            {/* Código Actual */}
-            {currentBarcode ? (
-              <div className="text-center p-10 bg-gradient-to-br from-[#F2F2F2] via-white to-[#F2F2F2] rounded-3xl border-2 border-[#0D0D0D]/20 shadow-2xl">
-                <div className="mb-8">
-                  <div className="w-56 h-56 mx-auto bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl flex items-center justify-center border-2 border-[#0D0D0D]/20">
-                    <div className="text-6xl text-[#038C33]">📦</div>
-                  </div>
+            <button
+              onClick={() => handleScan(scanInput)}
+              disabled={!scanInput.trim() || isLoading || !isDbConnected}
+              className="w-full bg-[#038C33] text-white py-4 px-6 rounded-xl font-bold text-lg hover:bg-[#038C33]/90 disabled:bg-[#0D0D0D]/30 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span>Procesando...</span>
                 </div>
+              ) : !isDbConnected ? (
+                "Sin conexión a BD"
+              ) : (
+                "Procesar Escaneo"
+              )}
+            </button>
+          </div>
 
-                <h3 className="text-3xl font-bold text-[#0D0D0D] mb-6 leading-tight">
-                  {currentBarcode.barcode}
-                </h3>
-
-                <div className="grid grid-cols-2 gap-6 max-w-md mx-auto mb-6">
-                  <div className="text-center p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-[#0D0D0D]/20">
-                    <p className="text-sm text-[#0D0D0D]/70 font-semibold mb-2">
-                      Primer Escaneo
-                    </p>
-                    <p className="text-lg font-bold text-[#038C33]">
-                      {new Date(currentBarcode.firstScanned).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-[#0D0D0D]/20">
-                    <p className="text-sm text-[#0D0D0D]/70 font-semibold mb-2">
-                      Último Escaneo
-                    </p>
-                    <p className="text-lg font-bold text-[#038C33]">
-                      {new Date(currentBarcode.lastScanned).toLocaleString()}
-                    </p>
-                  </div>
+          {/* Código Actual */}
+          {currentBarcode ? (
+            <div className="text-center p-10 bg-gradient-to-br from-[#F2F2F2] via-white to-[#F2F2F2] rounded-3xl border-2 border-[#0D0D0D]/20 shadow-2xl">
+              <div className="mb-8">
+                <div className="w-56 h-56 mx-auto bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl flex items-center justify-center border-2 border-[#0D0D0D]/20">
+                  <div className="text-6xl text-[#038C33]">📦</div>
                 </div>
+              </div>
 
-                <div className="mt-6">
-                  <p className="text-sm text-gray-600 mb-3">
-                    Cantidad Total Registrada
+              <h3 className="text-3xl font-bold text-[#0D0D0D] mb-6 leading-tight">
+                {currentBarcode.barcode}
+              </h3>
+
+              <div className="grid grid-cols-2 gap-6 max-w-md mx-auto mb-6">
+                <div className="text-center p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-[#0D0D0D]/20">
+                  <p className="text-sm text-[#0D0D0D]/70 font-semibold mb-2">
+                    Primer Escaneo
                   </p>
-
-                  {/* Controles de cantidad manual */}
-                  <div className="flex items-center justify-center space-x-6">
-                    <button
-                      onClick={() => handleQuantityChange(-1)}
-                      className="w-16 h-16 bg-[#BF0404] text-white rounded-2xl hover:bg-[#BF0404]/90 focus:ring-4 focus:ring-[#BF0404]/30 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:bg-[#0D0D0D]/30 disabled:cursor-not-allowed"
-                      disabled={
-                        !currentBarcode ||
-                        currentBarcode.quantity <= 0 ||
-                        !isDbConnected
-                      }
-                    >
-                      <svg
-                        className="w-8 h-8"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2.5}
-                          d="M20 12H4"
-                        />
-                      </svg>
-                    </button>
-
-                    <div className="text-center">
-                      <div className="w-24 h-16 text-center text-3xl font-bold text-[#038C33] border-2 border-[#038C33]/30 rounded-2xl bg-white/80 backdrop-blur-sm flex items-center justify-center">
-                        {currentBarcode.quantity}
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleQuantityChange(1)}
-                      className="w-16 h-16 bg-[#038C33] text-white rounded-2xl hover:bg-[#038C33]/90 focus:ring-4 focus:ring-[#038C33]/30 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 disabled:bg-[#0D0D0D]/30 disabled:cursor-not-allowed"
-                      disabled={!currentBarcode || !isDbConnected}
-                    >
-                      <svg
-                        className="w-8 h-8"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2.5}
-                          d="M12 4v16m8-8H4"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <p className="text-sm text-[#0D0D0D]/70 mt-4 font-medium">
-                    Usa los botones + y - para ajustar la cantidad manualmente
+                  <p className="text-lg font-bold text-[#038C33]">
+                    {new Date(currentBarcode.firstScanned).toLocaleString()}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-[#0D0D0D]/20">
+                  <p className="text-sm text-[#0D0D0D]/70 font-semibold mb-2">
+                    Último Escaneo
+                  </p>
+                  <p className="text-lg font-bold text-[#038C33]">
+                    {new Date(currentBarcode.lastScanned).toLocaleString()}
                   </p>
                 </div>
               </div>
-            ) : (
-              <div className="text-center py-20 bg-gradient-to-br from-[#F2F2F2] to-white rounded-3xl border-2 border-dashed border-[#0D0D0D]/30">
-                <div className="text-[#0D0D0D]/30 mb-6">
-                  <svg
-                    className="w-32 h-32 mx-auto"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+
+              <div className="mt-6">
+                <p className="text-sm text-gray-600 mb-3">
+                  Cantidad Total Registrada
+                </p>
+
+                {/* Controles de cantidad manual */}
+                <div className="flex items-center justify-center space-x-6">
+                  <button
+                    onClick={() => handleQuantityChange(-1)}
+                    className="w-16 h-16 bg-[#BF0404] text-white rounded-2xl hover:bg-[#BF0404]/90 focus:ring-4 focus:ring-[#BF0404]/30 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl disabled:bg-[#0D0D0D]/30 disabled:cursor-not-allowed"
+                    disabled={
+                      !currentBarcode ||
+                      currentBarcode.quantity <= 0 ||
+                      !isDbConnected
+                    }
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                    <svg
+                      className="w-8 h-8"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M20 12H4"
+                      />
+                    </svg>
+                  </button>
+
+                  <div className="text-center">
+                    <div className="w-24 h-16 text-center text-3xl font-bold text-[#038C33] border-2 border-[#038C33]/30 rounded-2xl bg-white/80 backdrop-blur-sm flex items-center justify-center">
+                      {currentBarcode.quantity}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleQuantityChange(1)}
+                    className="w-16 h-16 bg-[#038C33] text-white rounded-2xl hover:bg-[#038C33]/90 focus:ring-4 focus:ring-[#038C33]/30 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl disabled:bg-[#0D0D0D]/30 disabled:cursor-not-allowed"
+                    disabled={!currentBarcode || !isDbConnected}
+                  >
+                    <svg
+                      className="w-8 h-8"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                  </button>
                 </div>
-                <h3 className="text-2xl font-bold text-[#0D0D0D]/70 mb-3">
-                  Escanea un código para comenzar
-                </h3>
-                <p className="text-[#0D0D0D]/50 text-lg">
-                  Coloca el cursor en el campo de arriba y escanea el código de
-                  barras
+
+                <p className="text-sm text-[#0D0D0D]/70 mt-4 font-medium">
+                  Usa los botones + y - para ajustar la cantidad manualmente
                 </p>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="text-center py-20 bg-gradient-to-br from-[#F2F2F2] to-white rounded-3xl border-2 border-dashed border-[#0D0D0D]/30">
+              <div className="text-[#0D0D0D]/30 mb-6">
+                <svg
+                  className="w-32 h-32 mx-auto"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-[#0D0D0D]/70 mb-3">
+                Escanea un código para comenzar
+              </h3>
+              <p className="text-[#0D0D0D]/50 text-lg">
+                Coloca el cursor en el campo de arriba y escanea el código de
+                barras
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -623,7 +636,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
       {/* Success Overlay */}
       {showSuccessBlink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-green-500/30 backdrop-blur-sm animate-pulse">
-          <div className="bg-white rounded-3xl shadow-2xl border-4 border-green-500 p-12 text-center transform scale-110 animate-bounce">
+          <div className="bg-white rounded-3xl shadow-2xl border-4 border-green-500 p-12 text-center animate-bounce">
             <div className="text-8xl text-green-500 mb-4">✓</div>
             <h2 className="text-3xl font-bold text-green-600 mb-2">¡Éxito!</h2>
             <p className="text-lg text-gray-700">
@@ -636,7 +649,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
       {/* Error Overlay */}
       {showErrorAlert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-500/30 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-2xl border-4 border-red-500 p-12 text-center transform scale-110 animate-pulse">
+          <div className="bg-white rounded-3xl shadow-2xl border-4 border-red-500 p-12 text-center animate-pulse">
             <div className="text-8xl text-red-500 mb-4">⚠️</div>
             <h2 className="text-3xl font-bold text-red-600 mb-2">¡Error!</h2>
             <p className="text-lg text-gray-700">{errorMessage}</p>
