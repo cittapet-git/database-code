@@ -19,6 +19,7 @@ interface ScanLogsProps {
 export default function ScanLogs({ barcode, isDbConnected }: ScanLogsProps) {
   const [logs, setLogs] = useState<ScanLog[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [logsCountdown, setLogsCountdown] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 4;
 
@@ -65,16 +66,34 @@ export default function ScanLogs({ barcode, isDbConnected }: ScanLogsProps) {
     fetchLogs();
   }, [barcode, isDbConnected, fetchLogs]);
 
-  // Separate effect for periodic refresh when there's a selected barcode
+  // Separate effect for periodic refresh when there's a selected barcode with countdown
   useEffect(() => {
-    if (!barcode || !isDbConnected) return;
+    if (!barcode || !isDbConnected) {
+      setLogsCountdown(10);
+      return;
+    }
+
+    // Reset countdown when effect starts
+    setLogsCountdown(10);
 
     const logsRefreshInterval = setInterval(() => {
       fetchLogs();
-    }, 10000); // Refresh every 15 seconds
+      setLogsCountdown(10); // Reset countdown after refresh
+    }, 10000); // Refresh every 10 seconds
+
+    // Countdown timer
+    const countdownInterval = setInterval(() => {
+      setLogsCountdown((prev) => {
+        if (prev <= 1) {
+          return 10; // Reset to 10 when it reaches 0
+        }
+        return prev - 1;
+      });
+    }, 1000); // Update every second
 
     return () => {
       clearInterval(logsRefreshInterval);
+      clearInterval(countdownInterval);
     };
   }, [barcode, isDbConnected, fetchLogs]);
 
@@ -135,6 +154,11 @@ export default function ScanLogs({ barcode, isDbConnected }: ScanLogsProps) {
             Total: {logs.length} movimientos | Página {currentPage} de{" "}
             {totalPages || 1}
           </p>
+          {barcode && isDbConnected && (
+            <p className="text-sm text-[#038C33]/80 mt-1 font-medium">
+              🔄 Próxima actualización en {logsCountdown}s
+            </p>
+          )}
         </div>
         <div className="flex items-center space-x-2">
           <button

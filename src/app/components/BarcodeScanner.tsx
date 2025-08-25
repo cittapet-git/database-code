@@ -36,6 +36,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     useState<boolean>(true);
   const [showErrorAlert, setShowErrorAlert] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [recordsCountdown, setRecordsCountdown] = useState<number>(10);
   const inputRef = useRef<HTMLInputElement>(null);
   const lastScannedRef = useRef<{ barcode: string; time: number } | null>(null);
 
@@ -153,16 +154,34 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     };
   }, [fetchBarcodeRecords]);
 
-  // Separate effect for periodic refresh of barcode records
+  // Separate effect for periodic refresh of barcode records with countdown
   useEffect(() => {
-    if (!isDbConnected) return;
+    if (!isDbConnected) {
+      setRecordsCountdown(10);
+      return;
+    }
+
+    // Reset countdown when effect starts
+    setRecordsCountdown(10);
 
     const recordsRefreshInterval = setInterval(() => {
       fetchBarcodeRecords();
-    }, 10000); // Refresh every 15 seconds
+      setRecordsCountdown(10); // Reset countdown after refresh
+    }, 10000); // Refresh every 10 seconds
+
+    // Countdown timer
+    const countdownInterval = setInterval(() => {
+      setRecordsCountdown((prev) => {
+        if (prev <= 1) {
+          return 10; // Reset to 10 when it reaches 0
+        }
+        return prev - 1;
+      });
+    }, 1000); // Update every second
 
     return () => {
       clearInterval(recordsRefreshInterval);
+      clearInterval(countdownInterval);
     };
   }, [isDbConnected, fetchBarcodeRecords]);
 
@@ -422,6 +441,11 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                 Total: {allBarcodeRecords.length} registros | Página{" "}
                 {currentPage} de {totalPages || 1}
               </p>
+              {isDbConnected && (
+                <p className="text-sm text-[#038C33]/80 mt-1 font-medium">
+                  📊 Próxima actualización en {recordsCountdown}s
+                </p>
+              )}
             </div>
             <div className="flex space-x-2">
               <button
