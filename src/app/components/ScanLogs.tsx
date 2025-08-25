@@ -19,6 +19,21 @@ interface ScanLogsProps {
 export default function ScanLogs({ barcode, isDbConnected }: ScanLogsProps) {
   const [logs, setLogs] = useState<ScanLog[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 4;
+
+  // Pagination calculations
+  const totalPages = Math.ceil(logs.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentPageLogs = logs.slice(startIndex, endIndex);
+
+  // Reset to page 1 when logs change
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [logs.length, currentPage, totalPages]);
 
   const fetchLogs = useCallback(async () => {
     if (!barcode || !isDbConnected) {
@@ -56,7 +71,7 @@ export default function ScanLogs({ barcode, isDbConnected }: ScanLogsProps) {
 
     const logsRefreshInterval = setInterval(() => {
       fetchLogs();
-    }, 5000); // Refresh every 15 seconds
+    }, 10000); // Refresh every 15 seconds
 
     return () => {
       clearInterval(logsRefreshInterval);
@@ -116,7 +131,9 @@ export default function ScanLogs({ barcode, isDbConnected }: ScanLogsProps) {
             Historial de Movimientos
           </h2>
           <p className="text-sm text-[#0D0D0D]/60 mt-1">
-            Código: <span className="font-mono font-semibold">{barcode}</span>
+            Código: <span className="font-mono font-semibold">{barcode}</span> |
+            Total: {logs.length} movimientos | Página {currentPage} de{" "}
+            {totalPages || 1}
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -130,7 +147,7 @@ export default function ScanLogs({ barcode, isDbConnected }: ScanLogsProps) {
         </div>
       </div>
 
-      <div className="space-y-3 max-h-96 overflow-y-auto">
+      <div className="space-y-3" style={{ minHeight: "320px" }}>
         {isLoading ? (
           <div className="text-center py-8">
             <div className="w-6 h-6 border-2 border-[#038C33]/30 border-t-[#038C33] rounded-full animate-spin mx-auto mb-3"></div>
@@ -158,69 +175,156 @@ export default function ScanLogs({ barcode, isDbConnected }: ScanLogsProps) {
             </p>
           </div>
         ) : (
-          logs.map((log, index) => (
-            <div
-              key={log.id}
-              className={`p-4 rounded-xl border transition-all duration-200 ${
-                index === 0
-                  ? "bg-gradient-to-r from-[#038C33]/10 to-white border-[#038C33]/30 shadow-sm"
-                  : "bg-gradient-to-r from-[#F2F2F2] to-white border-[#0D0D0D]/10"
-              }`}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">{getDeltaIcon(log.delta)}</span>
-                  <span
-                    className={`font-bold text-lg ${getDeltaColor(log.delta)}`}
+          <>
+            <div className="space-y-3">
+              {currentPageLogs.map((log, index) => {
+                const globalIndex = startIndex + index;
+                return (
+                  <div
+                    key={log.id}
+                    className={`p-4 rounded-xl border transition-all duration-200 ${
+                      globalIndex === 0
+                        ? "bg-gradient-to-r from-[#038C33]/10 to-white border-[#038C33]/30 shadow-sm"
+                        : "bg-gradient-to-r from-[#F2F2F2] to-white border-[#0D0D0D]/10"
+                    }`}
                   >
-                    {formatDelta(log.delta)}
-                  </span>
-                  {index === 0 && (
-                    <span className="bg-[#038C33] text-white text-xs font-bold px-2 py-1 rounded-full">
-                      RECIENTE
-                    </span>
-                  )}
-                </div>
-                <div className="text-right">
-                  <span className="bg-[#0D0D0D]/10 text-[#0D0D0D] text-xs font-bold px-2 py-1 rounded-full">
-                    Total: {log.quantity_after}
-                  </span>
-                </div>
-              </div>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">
+                          {getDeltaIcon(log.delta)}
+                        </span>
+                        <span
+                          className={`font-bold text-lg ${getDeltaColor(log.delta)}`}
+                        >
+                          {formatDelta(log.delta)}
+                        </span>
+                        {globalIndex === 0 && (
+                          <span className="bg-[#038C33] text-white text-xs font-bold px-2 py-1 rounded-full">
+                            RECIENTE
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className="bg-[#0D0D0D]/10 text-[#0D0D0D] text-xs font-bold px-2 py-1 rounded-full">
+                          Total: {log.quantity_after}
+                        </span>
+                      </div>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-3 text-xs text-[#0D0D0D]/60">
-                <div>
-                  <p className="font-semibold mb-1">Operador:</p>
-                  <p className="font-mono bg-[#F2F2F2] px-2 py-1 rounded">
-                    {log.actor_name || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-semibold mb-1">Fecha y Hora:</p>
-                  <p className="font-mono bg-[#F2F2F2] px-2 py-1 rounded">
-                    {new Date(log.created_at).toLocaleString("es-ES", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    })}
-                  </p>
-                </div>
-              </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs text-[#0D0D0D]/60">
+                      <div>
+                        <p className="font-semibold mb-1">Operador:</p>
+                        <p className="font-mono bg-[#F2F2F2] px-2 py-1 rounded">
+                          {log.actor_name || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-semibold mb-1">Fecha y Hora:</p>
+                        <p className="font-mono bg-[#F2F2F2] px-2 py-1 rounded">
+                          {new Date(log.created_at).toLocaleString("es-ES", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-between items-center pt-4 border-t border-[#0D0D0D]/10 mt-4">
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 text-sm bg-[#0D0D0D]/10 text-[#0D0D0D] rounded-lg hover:bg-[#0D0D0D]/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                  <span>Anterior</span>
+                </button>
+
+                <div className="flex space-x-2">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const pageNumber =
+                      totalPages <= 5
+                        ? i + 1
+                        : currentPage <= 3
+                          ? i + 1
+                          : currentPage >= totalPages - 2
+                            ? totalPages - 4 + i
+                            : currentPage - 2 + i;
+
+                    return (
+                      <button
+                        key={pageNumber}
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className={`w-8 h-8 text-xs rounded-lg transition-all duration-200 ${
+                          currentPage === pageNumber
+                            ? "bg-[#038C33] text-white shadow-lg"
+                            : "bg-[#0D0D0D]/10 text-[#0D0D0D] hover:bg-[#0D0D0D]/20"
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 text-sm bg-[#0D0D0D]/10 text-[#0D0D0D] rounded-lg hover:bg-[#0D0D0D]/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                >
+                  <span>Siguiente</span>
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {logs.length > 0 && (
+      {/* {logs.length > 0 && (
         <div className="mt-4 pt-4 border-t border-[#0D0D0D]/10">
           <p className="text-xs text-[#0D0D0D]/50 text-center">
             Mostrando los últimos {logs.length} movimientos
           </p>
         </div>
-      )}
+      )} */}
     </div>
   );
 }
