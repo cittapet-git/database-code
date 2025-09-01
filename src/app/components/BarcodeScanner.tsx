@@ -39,12 +39,10 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
   const [recordsCountdown, setRecordsCountdown] = useState<number>(10);
   const inputRef = useRef<HTMLInputElement>(null);
   const lastScannedRef = useRef<{ barcode: string; time: number } | null>(null);
-
-  // Calcular total de productos escaneados
-  const totalProductsScanned = allBarcodeRecords.reduce(
-    (sum, item) => sum + item.quantity,
-    0,
-  );
+  
+  // Estados para los totales reales de la BD
+  const [totalCodes, setTotalCodes] = useState<number>(0);
+  const [totalProductsScanned, setTotalProductsScanned] = useState<number>(0);
 
   // Pagination calculations
   const totalPages = Math.ceil(allBarcodeRecords.length / itemsPerPage);
@@ -134,6 +132,28 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     }
   }, [isDbConnected]);
 
+  // Función para obtener los totales reales de la BD
+  const fetchTotals = useCallback(async () => {
+    if (!isDbConnected) return;
+
+    try {
+      const response = await fetch("/api/scans/totals");
+      if (response.ok) {
+        const totalsData = await response.json();
+        if (totalsData.error) {
+          console.error("Totals API error:", totalsData.error);
+          return;
+        }
+        setTotalCodes(totalsData.totalCodes || 0);
+        setTotalProductsScanned(totalsData.totalProductsScanned || 0);
+      } else {
+        console.error("Failed to fetch totals:", response.status);
+      }
+    } catch (error) {
+      console.error("Error fetching totals:", error);
+    }
+  }, [isDbConnected]);
+
   useEffect(() => {
     const checkDbConnection = async () => {
       setIsCheckingConnection(true);
@@ -143,6 +163,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
       if (connected) {
         fetchBarcodeRecords();
+        fetchTotals(); // Cargar totales iniciales
       }
     };
 
@@ -152,7 +173,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
     return () => {
       clearInterval(connectionCheckInterval);
     };
-  }, [fetchBarcodeRecords]);
+  }, [fetchBarcodeRecords, fetchTotals]);
 
   // Separate effect for periodic refresh of barcode records with countdown
   useEffect(() => {
@@ -166,6 +187,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
 
     const recordsRefreshInterval = setInterval(() => {
       fetchBarcodeRecords();
+      fetchTotals(); // También actualizar los totales
       setRecordsCountdown(10); // Reset countdown after refresh
     }, 10000); // Refresh every 10 seconds
 
@@ -183,7 +205,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
       clearInterval(recordsRefreshInterval);
       clearInterval(countdownInterval);
     };
-  }, [isDbConnected, fetchBarcodeRecords]);
+  }, [isDbConnected, fetchBarcodeRecords, fetchTotals]);
 
   useEffect(() => {
     const focusInput = () => {
@@ -363,7 +385,7 @@ export default function BarcodeScanner({ userName }: BarcodeScannerProps) {
                   Total de Códigos
                 </p>
                 <p className="text-4xl font-bold text-[#038C33]">
-                  {allBarcodeRecords.length}
+                  {totalCodes}
                 </p>
               </div>
               <div>
